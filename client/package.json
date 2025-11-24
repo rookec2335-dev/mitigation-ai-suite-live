@@ -13,4 +13,3 @@
   "build": "node node_modules/react-scripts/bin/react-scripts.js build",
   "test": "node node_modules/react-scripts/bin/react-scripts.js test"
 }
-}
