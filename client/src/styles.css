@@ -158,3 +158,29 @@ textarea {
     grid-template-columns: 1fr 1fr;
   }
 }
+.photo-section {
+  margin-top: 15px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #f9f9f9;
+}
+
+.photo-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.photo-box {
+  width: 160px;
+  text-align: center;
+}
+
+.preview-img {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 5px;
+}
