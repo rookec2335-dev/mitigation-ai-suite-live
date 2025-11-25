@@ -1,172 +1,244 @@
-// KEEP ALL IMPORTS YOU ALREADY HAD — JUST ADD ONE:
-import { useState } from "react";
+import React, { useState } from "react";
+import axios from "axios";
 
 function App() {
   const [initialInspection, setInitialInspection] = useState({
     date: "",
     inspector: "",
-    observations: ""
+    observations: "",
   });
 
   const [jobDetails, setJobDetails] = useState({
     company: "",
     jobNumber: "",
-    lossCategory: "Standard"
+    lossType: "Standard",
+    category: "", // Cat 1, 2 or 3
   });
-
-  const [rooms, setRooms] = useState([
-    { name: "", photos: [], narrative: "", dryLog: "" }
-  ]);
 
   const [psychometrics, setPsychometrics] = useState({
     outsideTemp: "",
     insideTemp: "",
-    relativeHumidity: "",
-    grainsPerLb: ""
+    humidity: "",
+    grainsPerLb: "",
   });
 
-  const [aiOutput, setAiOutput] = useState("");
+  const [rooms, setRooms] = useState([
+    { name: "", photos: null, narrative: "", dryLog: "" },
+  ]);
 
-  // ADD ROOM
-  const addRoom = () => {
-    setRooms([...rooms, { name: "", photos: [], narrative: "", dryLog: "" }]);
-  };
-
-  // HANDLE FILE UPLOAD
-  const handlePhotoUpload = (index, files) => {
+  const handleRoomChange = (index, field, value) => {
     const updatedRooms = [...rooms];
-    updatedRooms[index].photos = Array.from(files); // store photos
+    updatedRooms[index][field] = value;
     setRooms(updatedRooms);
   };
 
-  // AI CALL
-  const generateSummary = async () => {
+  const addRoom = () => {
+    setRooms([...rooms, { name: "", photos: null, narrative: "", dryLog: "" }]);
+  };
+
+  const generateAIReport = async () => {
     const payload = {
-      inspection: initialInspection,
-      job: jobDetails,
+      initialInspection,
+      jobDetails,
+      psychometrics,
       rooms,
-      psychometrics
     };
 
-    const response = await fetch("https://mitigation-ai-suite-live-back-end.onrender.com/generate-summary", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    const data = await response.json();
-    setAiOutput(data.summary);
+    try {
+      const response = await axios.post(
+        `${process.env.REACT_APP_API_BASE}/api/generate-report`,
+        payload
+      );
+      alert("Report Generated:\n\n" + response.data.report);
+    } catch (err) {
+      alert("Error generating report");
+    }
   };
 
   return (
-    <div style={{ padding: "30px", color: "white", fontFamily: "Arial" }}>
+    <div style={{ background: "#1E2A38", color: "white", minHeight: "100vh", padding: "2rem" }}>
       <h1>Mitigation Supervisor Console</h1>
       <p>Professional Insurance Format • Field Ready</p>
 
-      <hr />
-
-      {/* INITIAL INSPECTION */}
-      <section>
+      {/* ----------- INITIAL INSPECTION ----------- */}
+      <section style={boxStyle}>
         <h2>Initial Inspection</h2>
         <input
           type="date"
-          placeholder="Date"
-          onChange={(e) => setInitialInspection({ ...initialInspection, date: e.target.value })}
+          value={initialInspection.date}
+          onChange={(e) =>
+            setInitialInspection({ ...initialInspection, date: e.target.value })
+          }
+          style={inputStyle}
         />
         <input
           placeholder="Inspector Name"
-          onChange={(e) => setInitialInspection({ ...initialInspection, inspector: e.target.value })}
+          value={initialInspection.inspector}
+          onChange={(e) =>
+            setInitialInspection({ ...initialInspection, inspector: e.target.value })
+          }
+          style={inputStyle}
         />
         <textarea
-          placeholder="Observations (water visible, odor, hazards...)"
-          onChange={(e) => setInitialInspection({ ...initialInspection, observations: e.target.value })}
+          placeholder="Observations (water visible, odor, hazards, etc.)"
+          value={initialInspection.observations}
+          onChange={(e) =>
+            setInitialInspection({ ...initialInspection, observations: e.target.value })
+          }
+          style={textareaStyle}
         />
       </section>
 
-      {/* JOB DETAILS */}
-      <section>
+      {/* ----------- JOB / LOSS DETAILS ----------- */}
+      <section style={boxStyle}>
         <h2>Job / Loss Details</h2>
         <input
           placeholder="Company"
+          value={jobDetails.company}
           onChange={(e) => setJobDetails({ ...jobDetails, company: e.target.value })}
+          style={inputStyle}
         />
         <input
           placeholder="Job Number"
+          value={jobDetails.jobNumber}
           onChange={(e) => setJobDetails({ ...jobDetails, jobNumber: e.target.value })}
+          style={inputStyle}
         />
+
         <select
-          onChange={(e) => setJobDetails({ ...jobDetails, lossCategory: e.target.value })}
+          value={jobDetails.lossType}
+          onChange={(e) => setJobDetails({ ...jobDetails, lossType: e.target.value })}
+          style={inputStyle}
         >
-          <option>Standard</option>
-          <option>Cat 1</option>
-          <option>Cat 2</option>
-          <option>Cat 3</option>
+          <option value="Standard">Standard</option>
+          <option value="Fire Loss">Fire Loss</option>
+          <option value="Flood Loss">Flood Loss</option>
+        </select>
+
+        {/* Category 1 / 2 / 3 */}
+        <select
+          value={jobDetails.category}
+          onChange={(e) => setJobDetails({ ...jobDetails, category: e.target.value })}
+          style={inputStyle}
+        >
+          <option value="">Loss Category</option>
+          <option value="Category 1">Category 1 (Clean Water)</option>
+          <option value="Category 2">Category 2 (Gray Water)</option>
+          <option value="Category 3">Category 3 (Black Water)</option>
         </select>
       </section>
 
-      {/* ROOMS SECTION */}
-      <section>
+      {/* ----------- ROOMS & PHOTOS ----------- */}
+      <section style={boxStyle}>
         <h2>Rooms & Photos</h2>
         {rooms.map((room, index) => (
-          <div key={index} style={{ border: "1px solid gray", padding: "15px", marginBottom: "10px" }}>
+          <div key={index} style={{ marginBottom: "1rem" }}>
             <input
               placeholder="Room Name"
-              onChange={(e) => {
-                const updated = [...rooms];
-                updated[index].name = e.target.value;
-                setRooms(updated);
-              }}
+              value={room.name}
+              onChange={(e) => handleRoomChange(index, "name", e.target.value)}
+              style={inputStyle}
             />
 
-            {/* Photos */}
             <input
               type="file"
               multiple
-              onChange={(e) => handlePhotoUpload(index, e.target.files)}
+              onChange={(e) => handleRoomChange(index, "photos", e.target.files)}
+              style={inputStyle}
             />
 
-            {/* Narrative */}
             <textarea
-              placeholder="Narrative of work / damage"
-              onChange={(e) => {
-                const updated = [...rooms];
-                updated[index].narrative = e.target.value;
-                setRooms(updated);
-              }}
+              placeholder="Narrative of work performed / damage"
+              value={room.narrative}
+              onChange={(e) => handleRoomChange(index, "narrative", e.target.value)}
+              style={textareaStyle}
             />
 
-            {/* DRY LOG – NEW */}
             <textarea
-              placeholder="Dry Log (Day 1: %, Day 2: %, Dehus, RH, Temp)"
-              onChange={(e) => {
-                const updated = [...rooms];
-                updated[index].dryLog = e.target.value;
-                setRooms(updated);
-              }}
+              placeholder="Dry Log (Day 1: %, Dehus, RH, Temp)"
+              value={room.dryLog}
+              onChange={(e) => handleRoomChange(index, "dryLog", e.target.value)}
+              style={textareaStyle}
             />
           </div>
         ))}
-
-        <button onClick={addRoom}>+ Add Room</button>
+        <button onClick={addRoom} style={buttonGreen}>
+          + Add Room
+        </button>
       </section>
 
-      {/* PSYCHOMETRICS */}
-      <section>
-        <h2>Psychometric Data</h2>
-        <input placeholder="Outside Temp (°F)" onChange={(e) => setPsychometrics({ ...psychometrics, outsideTemp: e.target.value })} />
-        <input placeholder="Inside Temp (°F)" onChange={(e) => setPsychometrics({ ...psychometrics, insideTemp: e.target.value })} />
-        <input placeholder="Relative Humidity (%)" onChange={(e) => setPsychometrics({ ...psychometrics, relativeHumidity: e.target.value })} />
-        <input placeholder="Grains Per Lb" onChange={(e) => setPsychometrics({ ...psychometrics, grainsPerLb: e.target.value })} />
+      {/* ----------- PSYCHOMETRICS ----------- */}
+      <section style={boxStyle}>
+        <h2>Psychometric Readings</h2>
+        <input
+          placeholder="Outside Temp (°F)"
+          onChange={(e) => setPsychometrics({ ...psychometrics, outsideTemp: e.target.value })}
+          style={inputStyle}
+        />
+        <input
+          placeholder="Inside Temp (°F)"
+          onChange={(e) => setPsychometrics({ ...psychometrics, insideTemp: e.target.value })}
+          style={inputStyle}
+        />
+        <input
+          placeholder="Relative Humidity (%)"
+          onChange={(e) => setPsychometrics({ ...psychometrics, humidity: e.target.value })}
+          style={inputStyle}
+        />
+        <input
+          placeholder="Grains Per Pound"
+          onChange={(e) => setPsychometrics({ ...psychometrics, grainsPerLb: e.target.value })}
+          style={inputStyle}
+        />
       </section>
 
-      {/* AI OUTPUT */}
-      <button onClick={generateSummary}>Generate Insurance Summary (AI)</button>
-      {aiOutput && (
-        <pre style={{ background: "#222", padding: "15px", marginTop: "20px" }}>
-          {aiOutput}
-        </pre>
-      )}
+      {/* ----------- BUTTON ----------- */}
+      <button onClick={generateAIReport} style={buttonBlue}>
+        Generate Insurance Summary (AI)
+      </button>
     </div>
   );
 }
 
 export default App;
+
+const boxStyle = {
+  background: "#0E1822",
+  padding: "1rem",
+  borderRadius: "8px",
+  marginBottom: "1.5rem",
+};
+
+const inputStyle = {
+  width: "100%",
+  padding: "8px",
+  marginTop: "0.5rem",
+  borderRadius: "5px",
+  border: "none",
+};
+
+const textareaStyle = {
+  width: "100%",
+  height: "70px",
+  marginTop: "0.5rem",
+  padding: "8px",
+  borderRadius: "5px",
+  border: "none",
+};
+
+const buttonBlue = {
+  background: "#19A7CE",
+  padding: "12px 18px",
+  border: "none",
+  borderRadius: "6px",
+  cursor: "pointer",
+  width: "100%",
+};
+
+const buttonGreen = {
+  background: "#2ecc71",
+  padding: "8px 14px",
+  border: "none",
+  borderRadius: "6px",
+  cursor: "pointer",
+};
