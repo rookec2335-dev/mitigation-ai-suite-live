@@ -1,52 +1,30 @@
+// FULL UPDATED APP.JS FOR RENDER – Insurance Ready + Photo Upload
 import React, { useState } from "react";
 import axios from "axios";
 import "./styles.css";
 
-// 🔥 Use your Render backend
-const API_BASE = process.env.REACT_APP_API_BASE || "https://mitigation-ai-server.onrender.com";
+const API_BASE =
+  process.env.REACT_APP_API_BASE ||
+  "https://mitigation-ai-suite-live-back-end.onrender.com";
 
 function App() {
-  // =====================
-  //  MAIN STATE
-  // =====================
-  const [jobDetails, setJobDetails] = useState({
-    companyName: "",
-    jobNumber: "",
-    priority: "Standard",
-    technician: "",
-    supervisor: "",
-    dateOfLoss: "",
-    inspectionDate: "",
-    lossType: "",
-    iicrcClass: "",
-    sourceOfLoss: "",
-  });
-
+  // ================== FORM STATES ==================
   const [initialInspection, setInitialInspection] = useState({
     date: "",
     inspector: "",
     observations: "",
   });
 
-  const [insured, setInsured] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    address: "",
-    city: "",
-    state: "",
-    zip: "",
-  });
-
-  const [insurance, setInsurance] = useState({
-    carrier: "",
-    policyNumber: "",
-    claimNumber: "",
-    deductible: "",
-    adjusterName: "",
-    adjusterPhone: "",
-    adjusterEmail: "",
-    billingStatus: "",
+  const [jobDetails, setJobDetails] = useState({
+    companyName: "",
+    jobNumber: "",
+    technician: "",
+    supervisor: "",
+    lossType: "",
+    priority: "Standard",
+    dateOfLoss: "",
+    inspectionDate: "",
+    sourceOfLoss: "",
   });
 
   const [rooms, setRooms] = useState([
@@ -54,143 +32,69 @@ function App() {
       id: Date.now(),
       roomName: "",
       floor: "",
-      classOfWater: "",
-      affectedMaterials: "",
-      equipmentUsed: "",
-      roomNotes: "",
       narrative: "",
+      photos: [],
       dryLogs: [],
-      photos: [], // NEW ⚡
     },
   ]);
 
-  const [psychroReadings, setPsychroReadings] = useState([]);
-  const [globalNotes, setGlobalNotes] = useState({
-    general: "",
-    safety: "",
-    additionalWork: "",
-  });
-
   const [aiSummary, setAiSummary] = useState("");
-  const [psychroAnalysis, setPsychroAnalysis] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // =============================
-  // UPDATE HANDLERS
-  // =============================
-  const handleJobChange = (f, v) => setJobDetails((p) => ({ ...p, [f]: v }));
-  const handleInsuredChange = (f, v) => setInsured((p) => ({ ...p, [f]: v }));
-  const handleInsuranceChange = (f, v) => setInsurance((p) => ({ ...p, [f]: v }));
-
-  // =============================
-  //  PHOTO HANDLING
-  // =============================
-  const handlePhotoUpload = (roomId, files) => {
-    const uploaded = Array.from(files).map((file) => ({
-      id: Date.now() + Math.random(),
-      url: URL.createObjectURL(file),
-      caption: "",
-    }));
-    setRooms((prev) =>
-      prev.map((room) => (room.id === roomId ? { ...room, photos: [...room.photos, ...uploaded] } : room))
-    );
-  };
-
-  const updatePhotoCaption = (roomId, photoId, caption) => {
-    setRooms((prev) =>
-      prev.map((room) =>
-        room.id === roomId
-          ? {
-              ...room,
-              photos: room.photos.map((p) => (p.id === photoId ? { ...p, caption } : p)),
-            }
-          : room
-      )
-    );
-  };
-
-  // ADD ROOM
-  const addRoom = () =>
+  // ================== HANDLERS ==================
+  const addRoom = () => {
     setRooms((prev) => [
       ...prev,
       {
         id: Date.now(),
         roomName: "",
         floor: "",
-        classOfWater: "",
-        affectedMaterials: "",
-        equipmentUsed: "",
-        roomNotes: "",
         narrative: "",
-        dryLogs: [],
         photos: [],
+        dryLogs: [],
       },
     ]);
-
-  // =============================
-  // AI CALLS 🧠
-  // =============================
-  const handleGenerateSummary = async () => {
-    setLoading(true);
-    setAiSummary("");
-    try {
-      const job = {
-        jobDetails,
-        initialInspection,
-        insured,
-        insurance,
-        rooms,
-        psychroReadings,
-        globalNotes,
-      };
-
-      const res = await axios.post(`${API_BASE}/api/generate-summary`, { job });
-      setAiSummary(res.data.summary || "No AI response received.");
-    } catch (err) {
-      console.error(err);
-      setAiSummary("Error generating AI summary. Check server / API key.");
-    } finally {
-      setLoading(false);
-    }
   };
 
-  const handleAnalyzePsychro = async () => {
+  const updateRoomField = (id, field, value) =>
+    setRooms((r) => r.map((room) => (room.id === id ? { ...room, [field]: value } : room)));
+
+  const handlePhotoUpload = (roomId, files) => {
+    setRooms((prev) =>
+      prev.map((room) =>
+        room.id === roomId
+          ? { ...room, photos: [...room.photos, ...Array.from(files)] }
+          : room
+      )
+    );
+  };
+
+  const handleGenerateSummary = async () => {
     setLoading(true);
-    setPsychroAnalysis("");
     try {
-      const res = await axios.post(`${API_BASE}/api/analyze-psychrometrics`, {
-        readings: psychroReadings,
-      });
-      setPsychroAnalysis(
-        res.data.analysis ||
-          "Drying progression observed. Readings trending toward dry standard."
-      );
+      const payload = { initialInspection, jobDetails, rooms };
+      const res = await axios.post(`${API_BASE}/api/generate-summary`, payload);
+      setAiSummary(res.data.summary);
     } catch (err) {
-      console.error(err);
-      setPsychroAnalysis("Error analyzing psychrometrics.");
-    } finally {
-      setLoading(false);
+      setAiSummary("Error — check server.");
     }
+    setLoading(false);
   };
 
   const handleExportPdf = () => window.print();
 
-  // =============================
-  //  RENDER  UI
-  // =============================
+  // ================== UI LAYOUT ==================
   return (
     <div className="container">
-
-      {/* HEADER */}
       <div className="header-row">
         <h1>Mitigation Supervisor Console</h1>
-        <p className="subtext">
-          Professional mitigation documentation • Field tech friendly • Insurance ready
-        </p>
-        <button className="export-btn" onClick={handleExportPdf}>Export Insurance PDF</button>
+        <p className="subtext">Professional Insurance Format • Field Ready</p>
+        <button className="export-btn" onClick={handleExportPdf}>
+          Export Insurance Report PDF
+        </button>
       </div>
 
-      {/* INITIAL INSPECTION */}
+      {/* Initial Inspection */}
       <div className="card">
         <h2>Initial Inspection</h2>
         <div className="grid-3">
@@ -206,18 +110,82 @@ function App() {
           />
         </div>
         <textarea
-          className="full-input"
-          placeholder="Observations (water visible, odor present, hazards, etc.)"
+          placeholder="Observations: water visible, odors, hazards, etc."
           value={initialInspection.observations}
           onChange={(e) => setInitialInspection({ ...initialInspection, observations: e.target.value })}
         />
       </div>
 
-      {/* === REST OF YOUR UI — UNCHANGED (Rooms, Photos, AI Summary, Psychro Table...) === */}
-      {/* ——————————————————————————————————————————————————————————————— */}
-      {/* YOU DO NOT NEED TO TOUCH THAT SECTION — IT WORKS WITH THIS NEW CODE. */}
-      {/* ——————————————————————————————————————————————————————————————— */}
+      {/* JOB DETAILS */}
+      <div className="card">
+        <h2>Job / Loss Details</h2>
+        <div className="grid-3">
+          <input placeholder="Company" value={jobDetails.companyName} 
+            onChange={(e) => setJobDetails({ ...jobDetails, companyName: e.target.value })} />
+          <input placeholder="Job #" value={jobDetails.jobNumber}
+            onChange={(e) => setJobDetails({ ...jobDetails, jobNumber: e.target.value })} />
+          <select value={jobDetails.priority}
+            onChange={(e) => setJobDetails({ ...jobDetails, priority: e.target.value })}>
+            <option>Standard</option>
+            <option>Emergency</option>
+          </select>
+        </div>
+      </div>
 
+      {/* ROOMS */}
+      <div className="card">
+        <div className="flex-between">
+          <h2>Rooms & Photos</h2>
+          <button className="add-btn" onClick={addRoom}> + Add Room </button>
+        </div>
+
+        {rooms.map((room) => (
+          <div key={room.id} className="room-box">
+            <input
+              placeholder="Room Name"
+              value={room.roomName}
+              onChange={(e) => updateRoomField(room.id, "roomName", e.target.value)}
+            />
+
+            {/* Photo Upload */}
+            <div>
+              <input
+                type="file"
+                multiple
+                onChange={(e) => handlePhotoUpload(room.id, e.target.files)}
+              />
+              {room.photos.length > 0 && (
+                <div className="photo-preview">
+                  {room.photos.map((file, idx) => (
+                    <p key={idx}>📷 {file.name}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <textarea
+              placeholder="Narrative of work performed..."
+              value={room.narrative}
+              onChange={(e) => updateRoomField(room.id, "narrative", e.target.value)}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* AI SUMMARY */}
+      <div className="card">
+        <button className="primary-btn" onClick={handleGenerateSummary}>
+          Generate Insurance Summary (AI)
+        </button>
+
+        {loading && <p>Supervisor is reviewing...</p>}
+        {aiSummary && (
+          <div className="ai-section">
+            <h3>Insurance Summary</h3>
+            <p>{aiSummary}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
