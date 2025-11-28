@@ -79,3 +79,32 @@ input, select, textarea {
   border-radius: 6px;
   margin-bottom: 10px;
 }
+/* Psychrometric Table */
+.psychro-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  padding: 10px;
+  background: #0c1522;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.room-photo {
+  width: 200px;
+  border-radius: 6px;
+  margin-top: 10px;
+}
+
+.tech-card {
+  background: #122236;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+}
+
+.checklist-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+}
