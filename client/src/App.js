@@ -1,9 +1,11 @@
 // client/src/App.js
+
 import React, { useState } from "react";
 import "./styles.css";
-import logo from "./WaterCleanUpLogoFinal.png";
+import logo from "./WaterCleanUpLogoFinal.png"; // MUST match filename EXACTLY
 
 function App() {
+  // ================= STATE =================
   const [inspection, setInspection] = useState({
     date: "",
     inspector: "",
@@ -30,6 +32,7 @@ function App() {
     grains: "",
   });
 
+  // ================= HANDLERS =================
   const handleRoomChange = (index, field, value) => {
     const updatedRooms = [...rooms];
     updatedRooms[index][field] = value;
@@ -44,77 +47,34 @@ function App() {
     setTechHours([...techHours, { tech: "", hours: "" }]);
   };
 
-  const generateInsuranceSummary = async () => {
-    let roomInfo = rooms
-      .map(
-        (room) => `
-ROOM: ${room.name}
-Narrative: ${room.narrative}
-Dry Logs: ${room.dryLogs}
-Photos Taken: ${room.photos.length} file(s)
-`
-      )
-      .join("\n");
-
-    const aiPrompt = `
-Generate a professional INSURANCE-READY mitigation summary formatted like Xactimate reports.
-
-Initial Inspection:
-Date: ${inspection.date}
-Inspector: ${inspection.inspector}
-Observations: ${inspection.observations}
-
-Scope of Work (IMPORTANT):
-Summarize what must be done, including demo, drying, hazards, monitor schedule, etc.
-
-Job / Loss Details:
-Company: ${jobDetails.company}
-Job #: ${jobDetails.jobNumber}
-Loss Type: ${jobDetails.lossType}
-Loss Category: ${jobDetails.lossCategory}
-
-Rooms & Work Performed:
-${roomInfo}
-
-Psychrometric Readings:
-Outside Temp: ${psychro.outsideTemp}
-Inside Temp: ${psychro.insideTemp}
-RH%: ${psychro.rh}
-Grains Per Pound: ${psychro.grains}
-
-Tech Hours:
-${JSON.stringify(techHours, null, 2)}
-    `;
-
-    console.log(aiPrompt); // will send to backend API here later
-    alert("AI Report Ready — backend needed next!");
+  const generateInsuranceSummary = () => {
+    alert("AI Backend coming next — front end looks good now!");
   };
 
+  // ================= RENDER =================
   return (
     <div className="app-container">
+      {/* HEADER */}
       <header className="header">
         <img src={logo} alt="Company Logo" className="logo" />
         <h1>Mitigation Supervisor Console</h1>
         <p>Professional Insurance Format • Field Ready</p>
       </header>
 
-      {/* INITIAL INSPECTION */}
+      {/* ================= INITIAL INSPECTION ================= */}
       <section className="card">
         <h2>Initial Inspection</h2>
         <input
           type="date"
+          placeholder="mm/dd/yyyy"
           value={inspection.date}
-          onChange={(e) =>
-            setInspection({ ...inspection, date: e.target.value })
-          }
+          onChange={(e) => setInspection({ ...inspection, date: e.target.value })}
         />
         <input
           type="text"
           placeholder="Inspector Name"
           value={inspection.inspector}
-          onChange={(e) =>
-            setInspection({ ...inspection, inspector: e.target.value })
-          }
+          onChange={(e) => setInspection({ ...inspection, inspector: e.target.value })}
         />
         <textarea
           placeholder="Observations (water visible, hazards, odors, etc.)"
@@ -125,7 +85,7 @@ ${JSON.stringify(techHours, null, 2)}
         />
       </section>
 
-      {/* JOB DETAILS */}
+      {/* ================= JOB DETAILS ================= */}
       <section className="card">
         <h2>Job / Loss Details</h2>
         <input
@@ -151,8 +111,8 @@ ${JSON.stringify(techHours, null, 2)}
           }
         >
           <option>Standard</option>
-          <option>Fire Damage</option>
           <option>Water Damage</option>
+          <option>Fire Damage</option>
         </select>
         <input
           type="text"
@@ -164,7 +124,7 @@ ${JSON.stringify(techHours, null, 2)}
         />
       </section>
 
-      {/* ROOMS */}
+      {/* ================= ROOMS ================= */}
       <section className="card">
         <h2>Rooms & Photos</h2>
         {rooms.map((room, index) => (
@@ -183,14 +143,14 @@ ${JSON.stringify(techHours, null, 2)}
               }
             />
             <textarea
-              placeholder="Scope / work performed..."
+              placeholder="Narrative of work (demo, drying, baseboards, flooring removed...)"
               value={room.narrative}
               onChange={(e) =>
                 handleRoomChange(index, "narrative", e.target.value)
               }
             />
             <textarea
-              placeholder="Dry Log (Day 1-4: %, RH, Temp)"
+              placeholder="Dry Logs (Day 1-4: Moisture %, RH, Temp)"
               value={room.dryLogs}
               onChange={(e) =>
                 handleRoomChange(index, "dryLogs", e.target.value)
@@ -198,12 +158,10 @@ ${JSON.stringify(techHours, null, 2)}
             />
           </div>
         ))}
-        <button className="add-btn" onClick={addRoom}>
-          + Add Room
-        </button>
+        <button className="add-btn" onClick={addRoom}>+ Add Room</button>
       </section>
 
-      {/* TECH HOURS */}
+      {/* ================= TECH HOURS ================= */}
       <section className="card">
         <h2>Tech Hour Tracking</h2>
         {techHours.map((th, i) => (
@@ -230,33 +188,27 @@ ${JSON.stringify(techHours, null, 2)}
             />
           </div>
         ))}
-        <button className="add-btn" onClick={addTechHour}>
-          + Add Tech Hour
-        </button>
+        <button className="add-btn" onClick={addTechHour}>+ Add Tech Hour</button>
       </section>
 
-      {/* PSYCHROMETRIC */}
+      {/* ================= PSYCHROMETRIC TABLE ================= */}
       <section className="card">
         <h2>Psychrometric Table</h2>
         <input
           type="number"
           placeholder="Outside Temp (°F)"
           value={psychro.outsideTemp}
-          onChange={(e) =>
-            setPsychro({ ...psychro, outsideTemp: e.target.value })
-          }
+          onChange={(e) => setPsychro({ ...psychro, outsideTemp: e.target.value })}
         />
         <input
           type="number"
           placeholder="Inside Temp (°F)"
           value={psychro.insideTemp}
-          onChange={(e) =>
-            setPsychro({ ...psychro, insideTemp: e.target.value })
-          }
+          onChange={(e) => setPsychro({ ...psychro, insideTemp: e.target.value })}
         />
         <input
           type="number"
-          placeholder="RH %"
+          placeholder="Relative Humidity (%)"
           value={psychro.rh}
           onChange={(e) => setPsychro({ ...psychro, rh: e.target.value })}
         />
