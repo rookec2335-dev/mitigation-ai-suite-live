@@ -2,10 +2,18 @@
 
 import React, { useState } from "react";
 import "./styles.css";
-import logo from "./WaterCleanUpLogoFinal.png"; // MUST match filename EXACTLY
+import logo from "./WaterCleanUpLogoFinal.png";
 
 function App() {
-  // ================= STATE =================
+  // ====================== STATE ======================
+  const [emergency, setEmergency] = useState({
+    callTime: "",
+    callerName: "",
+    phone: "",
+    address: "",
+    issue: "",
+  });
+
   const [inspection, setInspection] = useState({
     date: "",
     inspector: "",
@@ -24,6 +32,7 @@ function App() {
   ]);
 
   const [techHours, setTechHours] = useState([{ tech: "", hours: "" }]);
+  const [adjusterNotes, setAdjusterNotes] = useState("");
 
   const [psychro, setPsychro] = useState({
     outsideTemp: "",
@@ -32,7 +41,16 @@ function App() {
     grains: "",
   });
 
-  // ================= HANDLERS =================
+  const [scopeOfWork, setScopeOfWork] = useState({
+    baseboardRemoval: false,
+    flooringRemoval: false,
+    drywallCut: false,
+    dehumidifiers: false,
+    airMovers: false,
+    containment: false,
+  });
+
+  // ====================== HANDLERS ======================
   const handleRoomChange = (index, field, value) => {
     const updatedRooms = [...rooms];
     updatedRooms[index][field] = value;
@@ -48,25 +66,59 @@ function App() {
   };
 
   const generateInsuranceSummary = () => {
-    alert("AI Backend coming next — front end looks good now!");
+    alert("AI Summary & PDF Export Coming in Backend Phase!");
   };
 
-  // ================= RENDER =================
+  // ====================== RETURN UI ======================
   return (
     <div className="app-container">
+
       {/* HEADER */}
       <header className="header">
         <img src={logo} alt="Company Logo" className="logo" />
         <h1>Mitigation Supervisor Console</h1>
-        <p>Professional Insurance Format • Field Ready</p>
+        <p>Professional Insurance Format • Field Tech Ready</p>
       </header>
 
-      {/* ================= INITIAL INSPECTION ================= */}
+      {/* ================== EMERGENCY INTAKE ================== */}
+      <section className="card">
+        <h2>📍 Emergency Call Intake</h2>
+        <input
+          type="datetime-local"
+          placeholder="Time of Call"
+          value={emergency.callTime}
+          onChange={(e) => setEmergency({ ...emergency, callTime: e.target.value })}
+        />
+        <input
+          type="text"
+          placeholder="Caller Name"
+          value={emergency.callerName}
+          onChange={(e) => setEmergency({ ...emergency, callerName: e.target.value })}
+        />
+        <input
+          type="tel"
+          placeholder="Phone Number"
+          value={emergency.phone}
+          onChange={(e) => setEmergency({ ...emergency, phone: e.target.value })}
+        />
+        <input
+          type="text"
+          placeholder="Property Address"
+          value={emergency.address}
+          onChange={(e) => setEmergency({ ...emergency, address: e.target.value })}
+        />
+        <textarea
+          placeholder="Reported Issue (Example: burst pipe in ceiling)"
+          value={emergency.issue}
+          onChange={(e) => setEmergency({ ...emergency, issue: e.target.value })}
+        />
+      </section>
+
+      {/* ================== INITIAL INSPECTION ================== */}
       <section className="card">
         <h2>Initial Inspection</h2>
         <input
           type="date"
-          placeholder="mm/dd/yyyy"
           value={inspection.date}
           onChange={(e) => setInspection({ ...inspection, date: e.target.value })}
         />
@@ -79,36 +131,43 @@ function App() {
         <textarea
           placeholder="Observations (water visible, hazards, odors, etc.)"
           value={inspection.observations}
-          onChange={(e) =>
-            setInspection({ ...inspection, observations: e.target.value })
-          }
+          onChange={(e) => setInspection({ ...inspection, observations: e.target.value })}
         />
       </section>
 
-      {/* ================= JOB DETAILS ================= */}
+      {/* ================== SCOPE OF WORK ================== */}
+      <section className="card">
+        <h2>Scope of Work (Assist)</h2>
+        {Object.keys(scopeOfWork).map((item) => (
+          <label key={item} className="checkbox-item">
+            <input
+              type="checkbox"
+              checked={scopeOfWork[item]}
+              onChange={() => setScopeOfWork({ ...scopeOfWork, [item]: !scopeOfWork[item] })}
+            />
+            {item.replace(/([A-Z])/g, " $1")}
+          </label>
+        ))}
+      </section>
+
+      {/* ================== JOB DETAILS ================== */}
       <section className="card">
         <h2>Job / Loss Details</h2>
         <input
           type="text"
           placeholder="Company"
           value={jobDetails.company}
-          onChange={(e) =>
-            setJobDetails({ ...jobDetails, company: e.target.value })
-          }
+          onChange={(e) => setJobDetails({ ...jobDetails, company: e.target.value })}
         />
         <input
           type="text"
           placeholder="Job Number"
           value={jobDetails.jobNumber}
-          onChange={(e) =>
-            setJobDetails({ ...jobDetails, jobNumber: e.target.value })
-          }
+          onChange={(e) => setJobDetails({ ...jobDetails, jobNumber: e.target.value })}
         />
         <select
           value={jobDetails.lossType}
-          onChange={(e) =>
-            setJobDetails({ ...jobDetails, lossType: e.target.value })
-          }
+          onChange={(e) => setJobDetails({ ...jobDetails, lossType: e.target.value })}
         >
           <option>Standard</option>
           <option>Water Damage</option>
@@ -118,72 +177,64 @@ function App() {
           type="text"
           placeholder="Loss Category (Cat 1, 2, or 3)"
           value={jobDetails.lossCategory}
-          onChange={(e) =>
-            setJobDetails({ ...jobDetails, lossCategory: e.target.value })
-          }
+          onChange={(e) => setJobDetails({ ...jobDetails, lossCategory: e.target.value })}
         />
       </section>
 
-      {/* ================= ROOMS ================= */}
+      {/* ================== ROOMS ================== */}
       <section className="card">
         <h2>Rooms & Photos</h2>
-        {rooms.map((room, index) => (
-          <div key={index} className="room-section">
+        {rooms.map((room, i) => (
+          <div key={i} className="room-section">
             <input
               type="text"
               placeholder="Room Name"
               value={room.name}
-              onChange={(e) => handleRoomChange(index, "name", e.target.value)}
+              onChange={(e) => handleRoomChange(i, "name", e.target.value)}
             />
             <input
               type="file"
               multiple
-              onChange={(e) =>
-                handleRoomChange(index, "photos", e.target.files)
-              }
+              onChange={(e) => handleRoomChange(i, "photos", e.target.files)}
             />
             <textarea
-              placeholder="Narrative of work (demo, drying, baseboards, flooring removed...)"
+              placeholder="Narrative (demo, removed baseboards, flooring…)"
               value={room.narrative}
-              onChange={(e) =>
-                handleRoomChange(index, "narrative", e.target.value)
-              }
+              onChange={(e) => handleRoomChange(i, "narrative", e.target.value)}
             />
             <textarea
-              placeholder="Dry Logs (Day 1-4: Moisture %, RH, Temp)"
+              placeholder="Dry Logs (Day 1-4 moisture %, RH, Temp)"
               value={room.dryLogs}
-              onChange={(e) =>
-                handleRoomChange(index, "dryLogs", e.target.value)
-              }
+              onChange={(e) => handleRoomChange(i, "dryLogs", e.target.value)}
             />
           </div>
         ))}
         <button className="add-btn" onClick={addRoom}>+ Add Room</button>
       </section>
 
-      {/* ================= TECH HOURS ================= */}
+      {/* ================== TECH HOURS ================== */}
       <section className="card">
-        <h2>Tech Hour Tracking</h2>
-        {techHours.map((th, i) => (
+        <h2>Tech Hours</h2>
+        {techHours.map((t, i) => (
           <div key={i} className="tech-row">
             <input
               type="text"
               placeholder="Tech Name"
-              value={th.tech}
+              value={t.tech}
               onChange={(e) => {
-                const updated = [...techHours];
-                updated[i].tech = e.target.value;
-                setTechHours(updated);
+                const copy = [...techHours];
+                copy[i].tech = e.target.value;
+                setTechHours(copy);
               }}
             />
             <input
               type="number"
-              placeholder="Hours Worked"
-              value={th.hours}
+              placeholder="Hours"
+              value={t.hours}
               onChange={(e) => {
-                const updated = [...techHours];
-                updated[i].hours = e.target.value;
-                setTechHours(updated);
+                const copy = [...techHours];
+                copy[i].hours = e.target.value;
+                setTechHours(copy);
               }}
             />
           </div>
@@ -191,38 +242,31 @@ function App() {
         <button className="add-btn" onClick={addTechHour}>+ Add Tech Hour</button>
       </section>
 
-      {/* ================= PSYCHROMETRIC TABLE ================= */}
+      {/* ================== PSYCHROMETRIC TABLE ================== */}
       <section className="card">
         <h2>Psychrometric Table</h2>
-        <input
-          type="number"
-          placeholder="Outside Temp (°F)"
-          value={psychro.outsideTemp}
-          onChange={(e) => setPsychro({ ...psychro, outsideTemp: e.target.value })}
-        />
-        <input
-          type="number"
-          placeholder="Inside Temp (°F)"
-          value={psychro.insideTemp}
-          onChange={(e) => setPsychro({ ...psychro, insideTemp: e.target.value })}
-        />
-        <input
-          type="number"
-          placeholder="Relative Humidity (%)"
-          value={psychro.rh}
-          onChange={(e) => setPsychro({ ...psychro, rh: e.target.value })}
-        />
-        <input
-          type="number"
-          placeholder="Grains Per Pound"
-          value={psychro.grains}
-          onChange={(e) => setPsychro({ ...psychro, grains: e.target.value })}
+        <input type="number" placeholder="Outside Temp (°F)" value={psychro.outsideTemp} onChange={(e) => setPsychro({ ...psychro, outsideTemp: e.target.value })} />
+        <input type="number" placeholder="Inside Temp (°F)" value={psychro.insideTemp} onChange={(e) => setPsychro({ ...psychro, insideTemp: e.target.value })} />
+        <input type="number" placeholder="Relative Humidity (%)" value={psychro.rh} onChange={(e) => setPsychro({ ...psychro, rh: e.target.value })} />
+        <input type="number" placeholder="Grains Per Pound" value={psychro.grains} onChange={(e) => setPsychro({ ...psychro, grains: e.target.value })} />
+      </section>
+
+      {/* ================== ADJUSTER NOTES ================== */}
+      <section className="card">
+        <h2>Adjuster Notes</h2>
+        <textarea
+          placeholder="Adjuster comments or special instructions"
+          value={adjusterNotes}
+          onChange={(e) => setAdjusterNotes(e.target.value)}
         />
       </section>
 
       <button className="generate-btn" onClick={generateInsuranceSummary}>
         Generate Insurance Summary (AI)
       </button>
+
+      {/* FOOTER */}
+      <footer className="footer">© {new Date().getFullYear()} - RooterPlus Water Cleanup</footer>
     </div>
   );
 }
