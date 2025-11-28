@@ -69,3 +69,13 @@ input, select, textarea {
   cursor: pointer;
   border-radius: 5px;
 }
+/* Psychrometric Table */
+.psychro-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  background: #0e1726;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
