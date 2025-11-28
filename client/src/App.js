@@ -1,126 +1,132 @@
+// client/src/App.js
 import React, { useState } from "react";
-import "./App.css";
+import "./styles.css";
 import logo from "./WaterCleanUpLogoFinal.png";
 
 function App() {
-  const [initialDetails, setInitialDetails] = useState({
+  const [inspection, setInspection] = useState({
     date: "",
     inspector: "",
     observations: "",
-    lossCategory: "Standard",
-    initialCallName: "",
-    timeOfLoss: "",
-    causeOfLoss: "",
-    accessInfo: ""
   });
 
   const [jobDetails, setJobDetails] = useState({
     company: "",
     jobNumber: "",
-    category: "",
+    lossType: "Standard",
+    lossCategory: "",
   });
 
   const [rooms, setRooms] = useState([
-    { name: "", photos: [], narrative: "", dryLog: "" },
+    { name: "", photos: [], narrative: "", dryLogs: "" },
   ]);
 
-  const [techHours, setTechHours] = useState([
-    { name: "", hours: "", description: "" },
-  ]);
+  const [techHours, setTechHours] = useState([{ tech: "", hours: "" }]);
 
-  const [psychrometrics, setPsychrometrics] = useState({
+  const [psychro, setPsychro] = useState({
     outsideTemp: "",
     insideTemp: "",
-    relativeHumidity: "",
-    grainsPerPound: "",
+    rh: "",
+    grains: "",
   });
 
-  // Add new Room
-  const addRoom = () => {
-    setRooms([...rooms, { name: "", photos: [], narrative: "", dryLog: "" }]);
+  const handleRoomChange = (index, field, value) => {
+    const updatedRooms = [...rooms];
+    updatedRooms[index][field] = value;
+    setRooms(updatedRooms);
   };
 
-  // Add new Technician row
-  const addTechHours = () => {
-    setTechHours([...techHours, { name: "", hours: "", description: "" }]);
+  const addRoom = () => {
+    setRooms([...rooms, { name: "", photos: [], narrative: "", dryLogs: "" }]);
+  };
+
+  const addTechHour = () => {
+    setTechHours([...techHours, { tech: "", hours: "" }]);
+  };
+
+  const generateInsuranceSummary = async () => {
+    let roomInfo = rooms
+      .map(
+        (room) => `
+ROOM: ${room.name}
+Narrative: ${room.narrative}
+Dry Logs: ${room.dryLogs}
+Photos Taken: ${room.photos.length} file(s)
+`
+      )
+      .join("\n");
+
+    const aiPrompt = `
+Generate a professional INSURANCE-READY mitigation summary formatted like Xactimate reports.
+
+Initial Inspection:
+Date: ${inspection.date}
+Inspector: ${inspection.inspector}
+Observations: ${inspection.observations}
+
+Scope of Work (IMPORTANT):
+Summarize what must be done, including demo, drying, hazards, monitor schedule, etc.
+
+Job / Loss Details:
+Company: ${jobDetails.company}
+Job #: ${jobDetails.jobNumber}
+Loss Type: ${jobDetails.lossType}
+Loss Category: ${jobDetails.lossCategory}
+
+Rooms & Work Performed:
+${roomInfo}
+
+Psychrometric Readings:
+Outside Temp: ${psychro.outsideTemp}
+Inside Temp: ${psychro.insideTemp}
+RH%: ${psychro.rh}
+Grains Per Pound: ${psychro.grains}
+
+Tech Hours:
+${JSON.stringify(techHours, null, 2)}
+    `;
+
+    console.log(aiPrompt); // will send to backend API here later
+    alert("AI Report Ready — backend needed next!");
   };
 
   return (
     <div className="app-container">
-      {/* Logo Header */}
-      <div className="header">
-        <img src={logo} alt="RooterPLUS Water Cleanup" className="logo" />
+      <header className="header">
+        <img src={logo} alt="Company Logo" className="logo" />
         <h1>Mitigation Supervisor Console</h1>
         <p>Professional Insurance Format • Field Ready</p>
-      </div>
+      </header>
 
-      {/* Initial Call Section */}
-      <section className="form-section">
-        <h2>📞 Initial Call / Emergency Details</h2>
-        <input
-          type="text"
-          placeholder="Caller Name"
-          value={initialDetails.initialCallName}
-          onChange={(e) =>
-            setInitialDetails({ ...initialDetails, initialCallName: e.target.value })
-          }
-        />
-        <input
-          type="text"
-          placeholder="Time of Loss"
-          value={initialDetails.timeOfLoss}
-          onChange={(e) =>
-            setInitialDetails({ ...initialDetails, timeOfLoss: e.target.value })
-          }
-        />
-        <input
-          type="text"
-          placeholder="Cause of Loss (Pipe burst, sewer backup, etc)"
-          value={initialDetails.causeOfLoss}
-          onChange={(e) =>
-            setInitialDetails({ ...initialDetails, causeOfLoss: e.target.value })
-          }
-        />
-        <input
-          type="text"
-          placeholder="Access Instructions (Gate codes, lockbox, etc)"
-          value={initialDetails.accessInfo}
-          onChange={(e) =>
-            setInitialDetails({ ...initialDetails, accessInfo: e.target.value })
-          }
-        />
-      </section>
-
-      {/* Initial Inspection */}
-      <section className="form-section">
+      {/* INITIAL INSPECTION */}
+      <section className="card">
         <h2>Initial Inspection</h2>
         <input
           type="date"
-          value={initialDetails.date}
+          value={inspection.date}
           onChange={(e) =>
-            setInitialDetails({ ...initialDetails, date: e.target.value })
+            setInspection({ ...inspection, date: e.target.value })
           }
         />
         <input
           type="text"
           placeholder="Inspector Name"
-          value={initialDetails.inspector}
+          value={inspection.inspector}
           onChange={(e) =>
-            setInitialDetails({ ...initialDetails, inspector: e.target.value })
+            setInspection({ ...inspection, inspector: e.target.value })
           }
         />
         <textarea
-          placeholder="Observations (water visible, odor, hazards, etc.)"
-          rows={3}
-          value={initialDetails.observations}
+          placeholder="Observations (water visible, hazards, odors, etc.)"
+          value={inspection.observations}
           onChange={(e) =>
-            setInitialDetails({ ...initialDetails, observations: e.target.value })
+            setInspection({ ...inspection, observations: e.target.value })
           }
         />
       </section>
 
-      {/* Job Details Section */}
-      <section className="form-section">
+      {/* JOB DETAILS */}
+      <section className="card">
         <h2>Job / Loss Details</h2>
         <input
           type="text"
@@ -139,152 +145,132 @@ function App() {
           }
         />
         <select
-          value={jobDetails.category}
+          value={jobDetails.lossType}
           onChange={(e) =>
-            setJobDetails({ ...jobDetails, category: e.target.value })
+            setJobDetails({ ...jobDetails, lossType: e.target.value })
           }
         >
-          <option value="Cat 1">Cat 1</option>
-          <option value="Cat 2">Cat 2</option>
-          <option value="Cat 3">Cat 3</option>
+          <option>Standard</option>
+          <option>Fire Damage</option>
+          <option>Water Damage</option>
         </select>
+        <input
+          type="text"
+          placeholder="Loss Category (Cat 1, 2, or 3)"
+          value={jobDetails.lossCategory}
+          onChange={(e) =>
+            setJobDetails({ ...jobDetails, lossCategory: e.target.value })
+          }
+        />
       </section>
 
-      {/* Rooms & Photos */}
-      <section className="form-section">
+      {/* ROOMS */}
+      <section className="card">
         <h2>Rooms & Photos</h2>
-        {rooms.map((room, i) => (
-          <div key={i} className="room-block">
+        {rooms.map((room, index) => (
+          <div key={index} className="room-section">
             <input
               type="text"
               placeholder="Room Name"
               value={room.name}
-              onChange={(e) => {
-                const newRooms = [...rooms];
-                newRooms[i].name = e.target.value;
-                setRooms(newRooms);
-              }}
+              onChange={(e) => handleRoomChange(index, "name", e.target.value)}
             />
             <input
               type="file"
               multiple
-              onChange={(e) => {
-                const files = Array.from(e.target.files);
-                const newRooms = [...rooms];
-                newRooms[i].photos = files;
-                setRooms(newRooms);
-              }}
+              onChange={(e) =>
+                handleRoomChange(index, "photos", e.target.files)
+              }
             />
             <textarea
-              placeholder="Narrative of work performed..."
-              rows={3}
+              placeholder="Scope / work performed..."
               value={room.narrative}
-              onChange={(e) => {
-                const newRooms = [...rooms];
-                newRooms[i].narrative = e.target.value;
-                setRooms(newRooms);
-              }}
+              onChange={(e) =>
+                handleRoomChange(index, "narrative", e.target.value)
+              }
             />
             <textarea
-              placeholder="Dry Log: Day 1-5 (RH, Temp, Dehus, %)"
-              rows={2}
-              value={room.dryLog}
-              onChange={(e) => {
-                const newRooms = [...rooms];
-                newRooms[i].dryLog = e.target.value;
-                setRooms(newRooms);
-              }}
+              placeholder="Dry Log (Day 1-4: %, RH, Temp)"
+              value={room.dryLogs}
+              onChange={(e) =>
+                handleRoomChange(index, "dryLogs", e.target.value)
+              }
             />
           </div>
         ))}
-        <button onClick={addRoom}>+ Add Room</button>
+        <button className="add-btn" onClick={addRoom}>
+          + Add Room
+        </button>
       </section>
 
-      {/* Technician Hours */}
-      <section className="form-section">
-        <h2>Technician Labor Hours</h2>
-        {techHours.map((tech, i) => (
-          <div key={i} className="tech-block">
+      {/* TECH HOURS */}
+      <section className="card">
+        <h2>Tech Hour Tracking</h2>
+        {techHours.map((th, i) => (
+          <div key={i} className="tech-row">
             <input
               type="text"
-              placeholder="Technician Name"
-              value={tech.name}
+              placeholder="Tech Name"
+              value={th.tech}
               onChange={(e) => {
-                const newTech = [...techHours];
-                newTech[i].name = e.target.value;
-                setTechHours(newTech);
+                const updated = [...techHours];
+                updated[i].tech = e.target.value;
+                setTechHours(updated);
               }}
             />
             <input
               type="number"
-              placeholder="Hours"
-              value={tech.hours}
+              placeholder="Hours Worked"
+              value={th.hours}
               onChange={(e) => {
-                const newTech = [...techHours];
-                newTech[i].hours = e.target.value;
-                setTechHours(newTech);
-              }}
-            />
-            <input
-              type="text"
-              placeholder="Description (Demo, Drying, Monitoring)"
-              value={tech.description}
-              onChange={(e) => {
-                const newTech = [...techHours];
-                newTech[i].description = e.target.value;
-                setTechHours(newTech);
+                const updated = [...techHours];
+                updated[i].hours = e.target.value;
+                setTechHours(updated);
               }}
             />
           </div>
         ))}
-        <button onClick={addTechHours}>+ Add Technician</button>
+        <button className="add-btn" onClick={addTechHour}>
+          + Add Tech Hour
+        </button>
       </section>
 
-      {/* Psychrometric Data */}
-      <section className="form-section">
-        <h2>Psychrometric Conditions</h2>
+      {/* PSYCHROMETRIC */}
+      <section className="card">
+        <h2>Psychrometric Table</h2>
         <input
-          type="text"
+          type="number"
           placeholder="Outside Temp (°F)"
-          value={psychrometrics.outsideTemp}
+          value={psychro.outsideTemp}
           onChange={(e) =>
-            setPsychrometrics({ ...psychrometrics, outsideTemp: e.target.value })
+            setPsychro({ ...psychro, outsideTemp: e.target.value })
           }
         />
         <input
-          type="text"
+          type="number"
           placeholder="Inside Temp (°F)"
-          value={psychrometrics.insideTemp}
+          value={psychro.insideTemp}
           onChange={(e) =>
-            setPsychrometrics({ ...psychrometrics, insideTemp: e.target.value })
+            setPsychro({ ...psychro, insideTemp: e.target.value })
           }
         />
         <input
-          type="text"
-          placeholder="Relative Humidity (%)"
-          value={psychrometrics.relativeHumidity}
-          onChange={(e) =>
-            setPsychrometrics({
-              ...psychrometrics,
-              relativeHumidity: e.target.value,
-            })
-          }
+          type="number"
+          placeholder="RH %"
+          value={psychro.rh}
+          onChange={(e) => setPsychro({ ...psychro, rh: e.target.value })}
         />
         <input
-          type="text"
+          type="number"
           placeholder="Grains Per Pound"
-          value={psychrometrics.grainsPerPound}
-          onChange={(e) =>
-            setPsychrometrics({
-              ...psychrometrics,
-              grainsPerPound: e.target.value,
-            })
-          }
+          value={psychro.grains}
+          onChange={(e) => setPsychro({ ...psychro, grains: e.target.value })}
         />
       </section>
 
-      {/* Generate PDF */}
-      <button className="generate-btn">Generate Insurance Summary (AI)</button>
+      <button className="generate-btn" onClick={generateInsuranceSummary}>
+        Generate Insurance Summary (AI)
+      </button>
     </div>
   );
 }
