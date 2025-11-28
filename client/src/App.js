@@ -5,9 +5,9 @@ import './styles.css';
 const API_BASE = process.env.REACT_APP_API_BASE || "https://mitigation-ai-server.onrender.com";
 
 function App() {
-  // =========================
-  // LOAD SAVED JOBS
-  // =========================
+  /* =========================
+     LOAD SAVED JOBS
+  ========================= */
   const [savedJobs, setSavedJobs] = useState([]);
   const [jobName, setJobName] = useState("");
 
@@ -48,9 +48,9 @@ function App() {
     alert("Job Loaded!");
   };
 
-  // =========================
-  // JOB & LOSS DETAILS
-  // =========================
+  /* =========================
+     INITIAL STATES
+  ========================= */
   const [jobDetails, setJobDetails] = useState({
     companyName: '',
     jobNumber: '',
@@ -64,11 +64,6 @@ function App() {
     sourceOfLoss: '',
   });
 
-  const handleJobChange = (f, v) => setJobDetails((p) => ({ ...p, [f]: v }));
-
-  // =========================
-  // INSURED DETAILS
-  // =========================
   const [insured, setInsured] = useState({
     name: '',
     phone: '',
@@ -78,11 +73,7 @@ function App() {
     state: '',
     zip: '',
   });
-  const handleInsuredChange = (f, v) => setInsured((p) => ({ ...p, [f]: v }));
 
-  // =========================
-  // INSURANCE DETAILS
-  // =========================
   const [insurance, setInsurance] = useState({
     carrier: '',
     policyNumber: '',
@@ -93,11 +84,7 @@ function App() {
     adjusterEmail: '',
     billingStatus: '',
   });
-  const handleInsuranceChange = (f, v) => setInsurance((p) => ({ ...p, [f]: v }));
 
-  // =========================
-  // INITIAL INSPECTION
-  // =========================
   const [inspection, setInspection] = useState({
     inspector: '',
     inspectionDate: '',
@@ -105,19 +92,18 @@ function App() {
     checklist: [],
   });
 
-  const checklistItems = [
+  const inspectionChecklistItems = [
     'Standing Water Present',
     'Musty Odor',
     'Visible Mold',
     'Structural Damage',
     'Electrical Risk',
-    'HVAC Impacted',
-    'Safety Hazards',
     'Baseboards Removed',
-    'Flooring Demolition Started',
+    'Flooring Demo Done',
+    'Safety Concerns',
   ];
 
-  const toggleChecklist = (item) => {
+  const toggleInspectionItem = (item) => {
     setInspection((prev) => ({
       ...prev,
       checklist: prev.checklist.includes(item)
@@ -126,36 +112,33 @@ function App() {
     }));
   };
 
-  // =========================
-  // TECH HOURS
-  // =========================
+  /* ============= TECH HOURS ============= */
   const [techHours, setTechHours] = useState([{ date: '', in: '', out: '', notes: '' }]);
-
-  const addTechHour = () => {
-    setTechHours([...techHours, { date: '', in: '', out: '', notes: '' }]);
-  };
-
+  const addTechHour = () => setTechHours([...techHours, { date: '', in: '', out: '', notes: '' }]);
   const updateTechHour = (idx, field, value) => {
-    const newHours = [...techHours];
-    newHours[idx][field] = value;
-    setTechHours(newHours);
+    const updated = [...techHours];
+    updated[idx][field] = value;
+    setTechHours(updated);
   };
 
-  // =========================
-  // ROOMS & DRY LOGS
-  // =========================
+  /* ============= ROOMS (UPDATED) ============= */
+  const roomChecklistItems = [
+    'Baseboards Removed',
+    'Carpet Pulled',
+    'Flooring Removed',
+    'Walls Cut (2ft/4ft)',
+    'Containment Setup',
+    'Dehumidifier Used',
+    'Air Movers Installed',
+    'HEPA Filtration Setup',
+  ];
+
   const [rooms, setRooms] = useState([
-    { name: '', narrative: '', dryLogs: [], photo: null }
+    { name: '', narrative: '', dryLogs: [], photo: null, checklist: [] }
   ]);
 
   const addRoom = () => {
-    setRooms([...rooms, { name: '', narrative: '', dryLogs: [], photo: null }]);
-  };
-
-  const addDryLog = (idx) => {
-    const updated = [...rooms];
-    updated[idx].dryLogs.push({ date: '', time: '', reading: '' });
-    setRooms(updated);
+    setRooms([...rooms, { name: '', narrative: '', dryLogs: [], photo: null, checklist: [] }]);
   };
 
   const updateRoom = (idx, field, value) => {
@@ -164,33 +147,41 @@ function App() {
     setRooms(updated);
   };
 
-  const handlePhotoUpload = (idx, event) => {
-    const file = event.target.files[0];
+  const toggleRoomChecklist = (roomIdx, item) => {
     const updated = [...rooms];
-    updated[idx].photo = URL.createObjectURL(file);
+    const checklist = updated[roomIdx].checklist;
+
+    updated[roomIdx].checklist = checklist.includes(item)
+      ? checklist.filter((i) => i !== item)
+      : [...checklist, item];
+
     setRooms(updated);
   };
 
-  // =========================
-  // PSYCHROMETRIC TABLE
-  // =========================
+  const addDryLog = (idx) => {
+    const updated = [...rooms];
+    updated[idx].dryLogs.push({ date: '', time: '', reading: '' });
+    setRooms(updated);
+  };
+
+  const handlePhotoUpload = (idx, e) => {
+    const updated = [...rooms];
+    updated[idx].photo = URL.createObjectURL(e.target.files[0]);
+    setRooms(updated);
+  };
+
+  /* ============= PSYCHROMETRIC TABLE ============= */
   const [psychroReadings, setPsychroReadings] = useState([
     { date: '', time: '', temp: '', rh: '', gpp: '' }
   ]);
-
-  const addReading = () => {
-    setPsychroReadings([...psychroReadings, { date: '', time: '', temp: '', rh: '', gpp: '' }]);
-  };
-
+  const addReading = () => setPsychroReadings([...psychroReadings, { date: '', time: '', temp: '', rh: '', gpp: '' }]);
   const updateReading = (idx, field, value) => {
     const updated = [...psychroReadings];
     updated[idx][field] = value;
     setPsychroReadings(updated);
   };
 
-  // =========================
-  // AI SUMMARY CALL
-  // =========================
+  /* ============= AI SUMMARY ============= */
   const [aiSummary, setAiSummary] = useState('');
   const handleGenerateSummary = async () => {
     try {
@@ -203,101 +194,51 @@ function App() {
         rooms,
         psychroReadings,
       };
+
       const res = await axios.post(`${API_BASE}/api/generate-summary`, { job: jobPayload });
       setAiSummary(res.data.summary);
-    } catch {
-      setAiSummary('Error – check server.');
+    } catch (err) {
+      setAiSummary('Error – check server / API key.');
     }
   };
 
-  // =========================
-  // RENDER UI
-  // =========================
+  /* ============= RENDER ============= */
   return (
     <div className="container">
       <header>
         <img src="/WaterCleanUpLogoFinal.png" className="company-logo" alt="Logo"/>
         <h1>Mitigation Supervisor Console</h1>
-        <p>Professional Documentation • Insurance Ready • Tech Friendly</p>
         <button className="primary-btn" onClick={() => window.print()}>Export PDF</button>
       </header>
 
-      {/* JOB SAVE / LOAD */}
-      <section className="card">
-        <h2>Save or Load Job</h2>
-        <input
-          placeholder="Job Name/Address"
-          value={jobName}
-          onChange={(e) => setJobName(e.target.value)}
-        />
-        <button onClick={saveJob}>💾 Save Job</button>
-        {savedJobs.length > 0 && (
-          <select onChange={(e) => loadJob(JSON.parse(e.target.value))}>
-            <option>Select saved job...</option>
-            {savedJobs.map((job, i) => (
-              <option key={i} value={JSON.stringify(job)}>
-                {job.jobName} – {new Date(job.timestamp).toLocaleDateString()}
-              </option>
-            ))}
-          </select>
-        )}
-      </section>
-
-      {/* JOB & LOSS SECTION */}
-      <section className="card">
-        <h2>Job & Loss Details</h2>
-        <div className="grid-3">
-          <input placeholder="Company Name" onChange={(e) => handleJobChange('companyName', e.target.value)} value={jobDetails.companyName}/>
-          <input placeholder="Job #" onChange={(e) => handleJobChange('jobNumber', e.target.value)} value={jobDetails.jobNumber}/>
-          <select onChange={(e) => handleJobChange('priority', e.target.value)} value={jobDetails.priority}>
-            <option>Standard</option>
-            <option>Emergency</option>
-            <option>After Hours</option>
-            <option>High Priority</option>
-          </select>
-        </div>
-        <div className="grid-3">
-          <input placeholder="Technician" onChange={(e) => handleJobChange('technician', e.target.value)} value={jobDetails.technician}/>
-          <input placeholder="Supervisor" onChange={(e) => handleJobChange('supervisor', e.target.value)} value={jobDetails.supervisor}/>
-          <input type="date" onChange={(e) => handleJobChange('inspectionDate', e.target.value)} value={jobDetails.inspectionDate}/>
-        </div>
-        <textarea placeholder="Source of Loss" onChange={(e) => handleJobChange('sourceOfLoss', e.target.value)} value={jobDetails.sourceOfLoss}/>
-      </section>
-
-      {/* INITIAL INSPECTION */}
-      <section className="card">
-        <h2>Initial Inspection</h2>
-        <input placeholder="Inspector" onChange={(e) => setInspection({ ...inspection, inspector: e.target.value })} value={inspection.inspector}/>
-        <input type="date" onChange={(e) => setInspection({ ...inspection, inspectionDate: e.target.value })} value={inspection.inspectionDate}/>
-        <textarea placeholder="Observations" onChange={(e) => setInspection({ ...inspection, observations: e.target.value })} value={inspection.observations}/>
-        <div className="checklist-grid">
-          {checklistItems.map((item) => (
-            <label key={item}><input type="checkbox" onChange={() => toggleChecklist(item)}/>{item}</label>
-          ))}
-        </div>
-      </section>
-
-      {/* TECH HOURS */}
-      <section className="card">
-        <h2>Tech Hours</h2>
-        {techHours.map((hour, idx) => (
-          <div className="tech-card" key={idx}>
-            <input type="date" onChange={(e) => updateTechHour(idx, 'date', e.target.value)} value={hour.date}/>
-            <input type="time" onChange={(e) => updateTechHour(idx, 'in', e.target.value)} value={hour.in}/>
-            <input type="time" onChange={(e) => updateTechHour(idx, 'out', e.target.value)} value={hour.out}/>
-            <textarea placeholder="Notes" onChange={(e) => updateTechHour(idx, 'notes', e.target.value)} value={hour.notes}/>
-          </div>
-        ))}
-        <button onClick={addTechHour}>+ Add Hour</button>
-      </section>
-
-      {/* ROOMS */}
+      {/* ROOMS SECTION (UPDATED) */}
       <section className="card">
         <h2>Rooms & Dry Logs</h2>
         {rooms.map((room, idx) => (
           <div key={idx} className="room-box">
-            <input placeholder="Room Name" value={room.name} onChange={(e) => updateRoom(idx, 'name', e.target.value)}/>
-            <textarea placeholder="Narrative of work done" value={room.narrative} onChange={(e) => updateRoom(idx, 'narrative', e.target.value)}/>
+            <input placeholder="Room Name" value={room.name}
+              onChange={(e) => updateRoom(idx, 'name', e.target.value)}
+            />
+
+            <textarea placeholder="Narrative of work done"
+              value={room.narrative}
+              onChange={(e) => updateRoom(idx, 'narrative', e.target.value)}
+            />
+
+            <h4>Room Checklist:</h4>
+            <div className="checklist-grid">
+              {roomChecklistItems.map((item) => (
+                <label key={item}>
+                  <input
+                    type="checkbox"
+                    checked={room.checklist.includes(item)}
+                    onChange={() => toggleRoomChecklist(idx, item)}
+                  />
+                  {item}
+                </label>
+              ))}
+            </div>
+
             <button onClick={() => addDryLog(idx)}>+ Add Dry Log</button>
             {room.dryLogs.map((log, i) => (
               <div key={i} className="grid-3">
@@ -306,31 +247,16 @@ function App() {
                 <input placeholder="Reading" onChange={(e) => { room.dryLogs[i].reading = e.target.value; setRooms([...rooms]); }}/>
               </div>
             ))}
-            <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(idx, e)}/>
+
+            <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(idx, e)} />
             {room.photo && <img src={room.photo} className="room-photo" alt="Room"/>}
           </div>
         ))}
         <button onClick={addRoom}>+ Add Room</button>
       </section>
 
-      {/* PSYCHROMETRICS */}
+      {/* AI SECTION */}
       <section className="card">
-        <h2>Psychrometric Readings</h2>
-        {psychroReadings.map((r, i) => (
-          <div key={i} className="psychro-row">
-            <input type="date" value={r.date} onChange={(e) => updateReading(i, 'date', e.target.value)}/>
-            <input type="time" value={r.time} onChange={(e) => updateReading(i, 'time', e.target.value)}/>
-            <input placeholder="Temp (°F)" value={r.temp} onChange={(e) => updateReading(i, 'temp', e.target.value)}/>
-            <input placeholder="RH (%)" value={r.rh} onChange={(e) => updateReading(i, 'rh', e.target.value)}/>
-            <input placeholder="GPP" value={r.gpp} onChange={(e) => updateReading(i, 'gpp', e.target.value)}/>
-          </div>
-        ))}
-        <button onClick={addReading}>+ Add Reading</button>
-      </section>
-
-      {/* AI SUMMARY */}
-      <section className="card">
-        <h2>AI Insurance Summary</h2>
         <button className="primary-btn" onClick={handleGenerateSummary}>Generate AI Summary</button>
         {aiSummary && (
           <div className="ai-section">
