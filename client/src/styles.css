@@ -108,3 +108,15 @@ input, select, textarea {
   grid-template-columns: repeat(2, 1fr);
   gap: 5px;
 }
+.checklist-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.room-box {
+  background: #132033;
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
