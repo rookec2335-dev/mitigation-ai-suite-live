@@ -1,106 +1,50 @@
 body {
-  background: #0b1624;
-  font-family: Arial, sans-serif;
+  background: #0d1b2a;
   color: white;
-  margin: 0;
+  font-family: Arial, sans-serif;
+  padding: 20px;
 }
 
 .container {
-  padding: 20px;
+  max-width: 1000px;
+  margin: auto;
 }
 
-.card {
-  background: #121e2f;
-  padding: 20px;
+.header-row {
+  text-align: center;
   margin-bottom: 20px;
-  border-radius: 10px;
-}
-
-h1, h2, h3 {
-  color: white;
-}
-
-input, select, textarea {
-  width: 100%;
-  padding: 10px;
-  margin: 8px 0;
-  border-radius: 5px;
-  border: none;
 }
 
 .company-logo {
-  width: 200px;
-  display: block;
-  margin-bottom: 10px;
-}
-
-/* CHECKLIST */
-.checklist-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 6px;
-}
-
-.check-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* TECH HOURS */
-.tech-card {
-  background: #0e1726;
-  padding: 15px;
-  border-radius: 6px;
-  border: 1px solid #243447;
+  height: 80px;
   margin-bottom: 15px;
 }
 
-.time-row {
-  display: flex;
-  gap: 10px;
+.card {
+  background: #1e2a38;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
 }
 
-.add-room-btn {
-  background: #2c73d2;
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  cursor: pointer;
-  border-radius: 5px;
-}
-/* Psychrometric Table */
-.psychro-row {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
-  background: #0e1726;
-  padding: 10px;
-  border-radius: 6px;
+.job-input {
+  padding: 8px;
   margin-bottom: 10px;
-}
-/* Psychrometric Table */
-.psychro-row {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
-  padding: 10px;
-  background: #0c1522;
-  border-radius: 6px;
-  margin-bottom: 10px;
-}
-
-.room-photo {
   width: 200px;
-  border-radius: 6px;
-  margin-top: 10px;
 }
 
-.tech-card {
-  background: #122236;
-  padding: 10px;
-  margin-bottom: 10px;
+.btn {
+  background: #3b82f6;
+  color: white;
+  padding: 6px 12px;
+  border: none;
   border-radius: 5px;
+  margin: 5px;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: #10b981;
 }
 
 .checklist-grid {
@@ -108,33 +52,33 @@ input, select, textarea {
   grid-template-columns: repeat(2, 1fr);
   gap: 5px;
 }
-.checklist-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 6px;
-}
 
 .room-box {
   background: #132033;
   padding: 15px;
+  margin-bottom: 15px;
   border-radius: 6px;
-  margin-bottom: 12px;
-}
-.checklist-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 6px;
 }
 
-.room-box {
-  background: #132033;
-  padding: 15px;
-  border-radius: 6px;
-  margin-bottom: 12px;
-}
-
+.grid-3,
+.grid-4,
 .grid-5 {
   display: grid;
+  gap: 8px;
+}
+
+.grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+.grid-5 {
   grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
+}
+
+.room-photo {
+  max-width: 100%;
+  border-radius: 6px;
+  margin-top: 10px;
 }
