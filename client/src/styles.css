@@ -1,84 +1,360 @@
+/* ============= GLOBAL RESET ============= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
 body {
-  background: #0d1b2a;
-  color: white;
-  font-family: Arial, sans-serif;
-  padding: 20px;
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #020617;
+  color: #0f172a;
 }
 
-.container {
-  max-width: 1000px;
-  margin: auto;
+/* ============= APP LAYOUT ============= */
+
+.app-root {
+  min-height: 100vh;
+  background: radial-gradient(circle at top left, #1f2937 0, #020617 45%);
+  color: #0f172a;
 }
 
-.header-row {
-  text-align: center;
-  margin-bottom: 20px;
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 32px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.4);
+  background: linear-gradient(135deg, #020617 0%, #0f172a 40%, #020617 100%);
+  color: #e5e7eb;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .company-logo {
-  height: 80px;
-  margin-bottom: 15px;
+  height: 60px;
+  width: auto;
+  object-fit: contain;
 }
 
-.card {
-  background: #1e2a38;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
+.app-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
 }
 
-.job-input {
-  padding: 8px;
-  margin-bottom: 10px;
-  width: 200px;
+.app-subtitle {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  color: #9ca3af;
 }
 
-.btn {
-  background: #3b82f6;
-  color: white;
-  padding: 6px 12px;
-  border: none;
-  border-radius: 5px;
-  margin: 5px;
-  cursor: pointer;
-}
-
-.btn-primary {
-  background: #10b981;
-}
-
-.checklist-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 5px;
-}
-
-.room-box {
-  background: #132033;
-  padding: 15px;
-  margin-bottom: 15px;
-  border-radius: 6px;
-}
-
-.grid-3,
-.grid-4,
-.grid-5 {
-  display: grid;
+.header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   gap: 8px;
 }
 
+.job-input,
+.job-select {
+  width: 260px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #4b5563;
+  background: #020617;
+  color: #e5e7eb;
+  font-size: 0.9rem;
+}
+
+.job-select {
+  cursor: pointer;
+}
+
+.job-input::placeholder {
+  color: #6b7280;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* ============= MAIN CONTAINER ============= */
+
+.app-container {
+  max-width: 1150px;
+  margin: 24px auto 48px;
+  padding: 0 16px 32px;
+}
+
+/* ============= CARDS ============= */
+
+.card {
+  background: #f9fafb;
+  border-radius: 14px;
+  padding: 20px 20px 24px;
+  margin-bottom: 18px;
+  box-shadow: 0 16px 25px rgba(15, 23, 42, 0.24);
+  border: 1px solid #e5e7eb;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 14px;
+}
+
+.card-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #0f172a;
+}
+
+.card-tag {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  background: #e5f3ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+/* ============= GRID HELPERS ============= */
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .grid-3 {
-  grid-template-columns: repeat(3, 1fr);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
+
 .grid-4 {
-  grid-template-columns: repeat(4, 1fr);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
+
 .grid-5 {
-  grid-template-columns: repeat(5, 1fr);
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.gap {
+  gap: 10px;
+}
+
+/* ============= FORM FIELDS ============= */
+
+.field-group {
+  margin-bottom: 14px;
+}
+
+.field-group label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #4b5563;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: #ffffff;
+  color: #111827;
+}
+
+textarea {
+  resize: vertical;
+}
+
+/* ============= BUTTONS ============= */
+
+.btn {
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  padding: 7px 14px;
+  font-size: 0.85rem;
+  background: #ffffff;
+  cursor: pointer;
+  color: #111827;
+  font-weight: 500;
+  transition: all 0.15s ease-out;
+}
+
+.btn:hover {
+  background: #e5e7eb;
+}
+
+.btn-primary {
+  background: #2563eb;
+  border-color: #1d4ed8;
+  color: #f9fafb;
+}
+
+.btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.btn-secondary {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+/* ============= CHECKLISTS ============= */
+
+.checklist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 6px 18px;
+  margin-top: 6px;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #111827;
+}
+
+/* ============= TABLE-LIKE HEADERS ============= */
+
+.table-like-header {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.table-like-header.small {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.table-like-header span {
+  padding: 0 2px;
+}
+
+.tech-row,
+.psychro-row {
+  margin-bottom: 8px;
+}
+
+/* ============= ROOMS ============= */
+
+.room-box {
+  background: #f3f4f6;
+  border-radius: 10px;
+  padding: 14px 14px 10px;
+  margin-bottom: 16px;
+  border: 1px solid #e5e7eb;
+}
+
+.room-photo-wrapper {
+  margin-top: 6px;
+  margin-bottom: 8px;
 }
 
 .room-photo {
-  max-width: 100%;
-  border-radius: 6px;
+  max-width: 260px;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.room-divider {
+  border: none;
+  border-top: 1px dashed #d1d5db;
   margin-top: 10px;
+}
+
+/* ============= AI SECTION ============= */
+
+.ai-section {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  max-height: 350px;
+  overflow: auto;
+}
+
+.ai-section h3 {
+  margin-top: 0;
+  font-size: 1rem;
+}
+
+/* ============= PRINT STYLES ============= */
+
+@media print {
+  body {
+    background: #ffffff !important;
+  }
+
+  .app-root {
+    background: #ffffff !important;
+  }
+
+  .app-header.no-print,
+  .no-print {
+    display: none !important;
+  }
+
+  .card {
+    box-shadow: none;
+    border: 1px solid #d1d5db;
+    page-break-inside: avoid;
+  }
+
+  .room-photo {
+    max-height: 220px;
+    object-fit: cover;
+  }
+}
+
+/* ============= RESPONSIVE ============= */
+
+@media (max-width: 900px) {
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .header-right {
+    align-items: flex-start;
+  }
+
+  .grid-2,
+  .grid-3,
+  .grid-4,
+  .grid-5 {
+    grid-template-columns: 1fr;
+  }
+
+  .table-like-header {
+    display: none;
+  }
 }
