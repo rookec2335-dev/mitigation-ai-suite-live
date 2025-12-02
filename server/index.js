@@ -1,6 +1,6 @@
 // ==============================
-// MITIGATION AI SERVER (FULL FILE)
-// Safe to copy & paste — overwrite your current index.js
+// MITIGATION AI SERVER — CLEAN + IMPROVED
+// SAFE TO COPY & PASTE OVER EXISTING index.js
 // ==============================
 
 require("dotenv").config();
@@ -15,24 +15,28 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
-app.use(bodyParser.json({ limit: "5mb" }));
+app.use(bodyParser.json({ limit: "20mb" }));
 
 // ------------------------------
-// Health check
+// HEALTH CHECK
 // ------------------------------
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", service: "mitigation-ai-server" });
 });
 
-// Helper: create OpenAI client
+// ------------------------------
+// OpenAI Helper
+// ------------------------------
 function createOpenAI() {
   if (!process.env.OPENAI_API_KEY) {
-    throw new Error("Missing OPENAI_API_KEY in environment.");
+    throw new Error("Missing OPENAI_API_KEY");
   }
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 }
 
-// Helper: build a rich text prompt from job
+// ------------------------------
+// FORMAT JOB CONTEXT FOR PROMPTING
+// ------------------------------
 function buildJobContext(job) {
   const {
     jobDetails = {},
@@ -45,171 +49,126 @@ function buildJobContext(job) {
   } = job || {};
 
   return `
-JOB & LOSS
-- Company: ${jobDetails.companyName || "N/A"}
-- Job #: ${jobDetails.jobNumber || "N/A"}
-- Priority: ${jobDetails.priority || "Standard"}
-- Tech: ${jobDetails.technician || "N/A"}
-- Supervisor: ${jobDetails.supervisor || "N/A"}
-- Date of Loss: ${jobDetails.dateOfLoss || "N/A"}
-- Inspection Date: ${jobDetails.inspectionDate || "N/A"}
-- Loss Type: ${jobDetails.lossType || "N/A"}
-- IICRC Class: ${jobDetails.iicrcClass || "N/A"}
-- Source of Loss: ${jobDetails.sourceOfLoss || "N/A"}
+=== JOB DETAILS ===
+Company: ${jobDetails.companyName || "N/A"}
+Job #: ${jobDetails.jobNumber || "N/A"}
+Technician: ${jobDetails.technician || "N/A"}
+Supervisor: ${jobDetails.supervisor || "N/A"}
+Priority: ${jobDetails.priority || "Standard"}
+Loss Type: ${jobDetails.lossType || "N/A"}
+IICRC Class: ${jobDetails.iicrcClass || "N/A"}
+Source of Loss: ${jobDetails.sourceOfLoss || "N/A"}
+Date of Loss: ${jobDetails.dateOfLoss || "N/A"}
+Inspection Date: ${jobDetails.inspectionDate || "N/A"}
 
-INSURED / PROPERTY
-- Name: ${insured.name || "N/A"}
-- Phone: ${insured.phone || "N/A"}
-- Email: ${insured.email || "N/A"}
-- Address: ${insured.address || ""} ${insured.city || ""} ${insured.state || ""} ${insured.zip || ""}
+=== INSURED INFO ===
+Insured: ${insured.name || "N/A"}
+Phone: ${insured.phone || "N/A"}
+Email: ${insured.email || "N/A"}
+Address: ${insured.address || ""} ${insured.city || ""} ${insured.state || ""} ${insured.zip || ""}
 
-INSURANCE INFO
-- Carrier: ${insurance.carrier || "N/A"}
-- Policy #: ${insurance.policyNumber || "N/A"}
-- Claim #: ${insurance.claimNumber || "N/A"}
-- Deductible: ${insurance.deductible || "N/A"}
-- Adjuster: ${insurance.adjusterName || "N/A"} | ${insurance.adjusterPhone || "N/A"} | ${insurance.adjusterEmail || "N/A"}
-- Billing Status: ${insurance.billingStatus || "N/A"}
+=== INSURANCE CARRIER ===
+Carrier: ${insurance.carrier || "N/A"}
+Policy #: ${insurance.policyNumber || "N/A"}
+Claim #: ${insurance.claimNumber || "N/A"}
+Adjuster: ${insurance.adjusterName || "N/A"} (${insurance.adjusterPhone || "N/A"})
+Email: ${insurance.adjusterEmail || "N/A"}
+Deductible: ${insurance.deductible || "N/A"}
 
-INITIAL INSPECTION
-- Inspector: ${inspection.inspector || "N/A"}
-- Inspection Date: ${inspection.inspectionDate || "N/A"}
-- Observations / Narrative: ${inspection.observations || "N/A"}
-- Checklist Flags: ${(inspection.checklist || []).join(", ") || "None noted"}
+=== INITIAL INSPECTION ===
+Inspector: ${inspection.inspector || "N/A"}
+Inspection Date: ${inspection.inspectionDate || "N/A"}
+Observations: ${inspection.observations || "N/A"}
+Checklist: ${(inspection.checklist || []).join(", ") || "None"}
 
-TECH HOURS
+=== TECH HOURS ===
 ${techHours
-  .map(
-    (h) =>
-      `- ${h.date || "N/A"} | In: ${h.in || "N/A"} | Out: ${
-        h.out || "N/A"
-      } | Notes: ${h.notes || ""}`
-  )
-  .join("\n") || "No hours entered."}
+    .map(
+      (h) =>
+        `• ${h.date || "N/A"} — In: ${h.in || "N/A"} Out: ${h.out || "N/A"} Notes: ${
+          h.notes || ""
+        }`
+    )
+    .join("\n")}
 
-ROOMS & DRY LOGS
+=== ROOMS ===
 ${rooms
-  .map((r, idx) => {
-    const dry = (r.dryLogs || [])
-      .map(
-        (d) =>
-          `    • ${d.date || "N/A"} ${d.time || ""} – ${d.reading || ""}`
-      )
-      .join("\n");
-    const checklist = (r.checklist || []).join(", ") || "None";
-    return `
-  Room ${idx + 1}: ${r.name || "Unnamed Room"}
-  - Narrative: ${r.narrative || "N/A"}
-  - Checklist: ${checklist}
-  - Dry Logs:
-${dry || "    • No dry logs recorded."}
+    .map((r, idx) => {
+      const dry = r.dryLogs
+        ?.map(
+          (d) => `   - ${d.date || ""} ${d.time || ""} | Reading: ${d.reading || ""}`
+        )
+        .join("\n");
+      return `
+Room ${idx + 1}: ${r.name || "Unnamed"}
+Narrative: ${r.narrative || "N/A"}
+Checklist: ${(r.checklist || []).join(", ") || "None"}
+Dry Logs:
+${dry || "   - No logs"}
 `;
-  })
-  .join("\n") || "No rooms recorded."}
+    })
+    .join("\n")}
 
-PSYCHROMETRIC READINGS
+=== PSYCHROMETRIC READINGS ===
 ${psychroReadings
-  .map(
-    (p) =>
-      `- ${p.date || "N/A"} ${p.time || ""} | Temp: ${
-        p.temp || "N/A"
-      } | RH: ${p.rh || "N/A"} | GPP: ${p.gpp || "N/A"}`
-  )
-  .join("\n") || "No psychrometric readings recorded."}
+    .map(
+      (p) =>
+        `• ${p.date || ""} ${p.time || ""} | Temp: ${p.temp || ""} RH: ${
+          p.rh || ""
+        } GPP: ${p.gpp || ""}`
+    )
+    .join("\n")}
 `;
 }
 
 // ------------------------------
-// AI: Full Insurance Summary + Scope of Work
+// AI SUMMARY (INSURANCE-READY)
 // ------------------------------
 app.post("/api/generate-summary", async (req, res) => {
   try {
     const job = req.body.job || {};
     const openai = createOpenAI();
-
     const jobContext = buildJobContext(job);
 
     const prompt = `
-You are a senior mitigation supervisor (15+ years experience) writing documentation
-for PROPERTY INSURANCE CARRIERS. You understand IICRC, Xactimate-style scopes,
-and what adjusters look for.
+You are an expert mitigation supervisor who writes insurance-ready narratives.
+Write a **clean, factual, professional** narrative formatted exactly with
+these headings (do NOT change or add headings):
 
-GOAL:
-Create a clear, professional, insurer-ready narrative that can be attached directly
-to a mitigation invoice file. Use neutral, factual language.
+1) CLAIM / LOSS SUMMARY  
+2) INITIAL INSPECTION SUMMARY  
+3) DETAILED SCOPE OF WORK  
+4) ROOM-BY-ROOM DESCRIPTION  
+5) EQUIPMENT & DRYING STRATEGY  
+6) PSYCHROMETRIC / DRYING PROGRESSION  
+7) TECH HOURS & SITE VISITS  
+8) FINAL RECOMMENDATIONS / HANDOFF  
 
-FORMAT THE RESPONSE USING THESE EXACT SECTION HEADINGS:
+Use bullet points where appropriate.  
+Do NOT exaggerate or create materials not provided.  
 
-1) CLAIM / LOSS SUMMARY
-- Briefly restate loss type, category of water, IICRC class, and cause of loss.
-- Include property address and insured name as a single concise paragraph.
-
-2) INITIAL INSPECTION SUMMARY
-- Summarize key conditions found on arrival using inspection observations & checklist.
-- Mention standing water, odors, visible damages, safety concerns, etc.
-- Note any immediate actions taken for safety.
-
-3) DETAILED SCOPE OF WORK
-- Use bullet points.
-- Build scope of work from Initial Inspection, room narratives, and room checklists.
-- For each major task, reference the area (e.g., "Hall bath," "Living room," etc.).
-- Include demolition (baseboards, drywall, flooring), cleaning, drying, containment, and equipment setup.
-
-4) ROOM-BY-ROOM DESCRIPTION
-- For each room: describe what was affected and what work was done.
-- Mention whether materials were removed or dried in place.
-- Include any containment or specialty drying details.
-
-5) EQUIPMENT & DRYING STRATEGY
-- Summarize dehumidifiers, air movers, HEPA units, etc. (based on room data and typical setups).
-- Explain rationale for equipment, referencing psychrometric trends if available.
-
-6) PSYCHROMETRIC / DRYING PROGRESSION
-- Provide a short paragraph describing whether conditions improved over time
-  (drier air, lower RH, improved GPP).
-- Keep this concise (3–5 sentences). DO NOT list each reading.
-
-7) TECH HOURS & SITE VISITS
-- Summarize tech presence on site (e.g., daily monitoring, equipment adjustments).
-- Explain that hours reflect monitoring, documentation, and moisture mapping.
-
-8) FINAL RECOMMENDATIONS / HANDOFF
-- Note remaining work items (rebuild, further evaluation, etc.).
-- Keep neutral and professional.
-
-Use clear paragraphs and bullet lists. Do NOT add your own headings beyond the 8 above.
-Do NOT invent policy language. Just justify the mitigation.
-
-Here is the structured job data:
-
+JOB DATA:
 ${jobContext}
     `.trim();
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        {
-          role: "system",
-          content:
-            "You are an expert mitigation supervisor who writes insurer-ready documentation only.",
-        },
+        { role: "system", content: "You produce insurer-ready mitigation reports only." },
         { role: "user", content: prompt },
       ],
     });
 
-    const summaryText =
-      response.choices?.[0]?.message?.content ||
-      "No AI response — check API settings.";
-
-    res.json({ summary: summaryText });
-  } catch (error) {
-    console.error("AI SUMMARY ERROR:", error);
-    res.status(500).json({ error: "AI summary failed. Check server logs." });
+    const summary = response.choices?.[0]?.message?.content || "AI response missing";
+    res.json({ summary });
+  } catch (err) {
+    console.error("SUMMARY ERR:", err);
+    res.status(500).json({ error: "Summary generation failed" });
   }
 });
 
 // ------------------------------
-// AI: Psychrometric Analysis (short & focused)
+// AI PSYCHROMETRIC ANALYSIS
 // ------------------------------
 app.post("/api/analyze-psychrometrics", async (req, res) => {
   try {
@@ -217,38 +176,29 @@ app.post("/api/analyze-psychrometrics", async (req, res) => {
     const openai = createOpenAI();
 
     const prompt = `
-You are a mitigation supervisor reviewing psychrometric logs.
-
-TASK:
-Return a SHORT SUMMARY (max 2 short paragraphs + 3 bullet points) describing:
-- Whether drying conditions improved (trend in GPP / RH / temp)
-- Any concerns (no change, rising humidity, equipment issues)
-- Whether conditions appear to be moving toward dry standard.
-
-Do NOT list each reading. Just interpret the trend.
+Provide a short (2 paragraph max + 3 bullets)
+interpretation of drying progress based on psychrometric readings.
+Discuss GPP, RH, and temperature trends.
 
 READINGS:
 ${JSON.stringify(readings, null, 2)}
-    `.trim();
+`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
     });
 
-    const analysisText =
-      response.choices?.[0]?.message?.content ||
-      "No AI psychrometric response.";
-
-    res.json({ analysis: analysisText });
-  } catch (error) {
-    console.error("AI PSYCHRO ERROR:", error);
-    res.status(500).json({ error: "AI psychrometric analysis failed." });
+    const analysis = response.choices?.[0]?.message?.content || "";
+    res.json({ analysis });
+  } catch (err) {
+    console.error("PSYCHRO ERR:", err);
+    res.status(500).json({ error: "Psychro analysis failed" });
   }
 });
 
 // ------------------------------
-// AI: Scope of Work Only (optional endpoint)
+// SCOPE ONLY ENDPOINT
 // ------------------------------
 app.post("/api/generate-scope-only", async (req, res) => {
   try {
@@ -257,31 +207,24 @@ app.post("/api/generate-scope-only", async (req, res) => {
     const jobContext = buildJobContext(job);
 
     const prompt = `
-Using the job data below, write ONLY a clean, bullet-pointed SCOPE OF WORK,
-as it would appear in mitigation documentation sent to insurance.
+Write ONLY a mitigation **Scope of Work** as bullet points.
+Group by room/area.  
+No pricing. No policy language. No headings.
 
-- Focus on demolition, drying, cleaning, containment, and equipment.
-- Group bullets by area/room.
-- Do NOT include pricing, quantities, or policy language.
-- Do NOT add extra sections or headings, just the scope bullets.
-
-JOB DATA:
+DATA:
 ${jobContext}
-    `.trim();
+`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
     });
 
-    const scopeText =
-      response.choices?.[0]?.message?.content ||
-      "No AI scope response — check API settings.";
-
-    res.json({ scope: scopeText });
-  } catch (error) {
-    console.error("AI SCOPE ERROR:", error);
-    res.status(500).json({ error: "AI scope generation failed." });
+    const scope = response.choices?.[0]?.message?.content || "";
+    res.json({ scope });
+  } catch (err) {
+    console.error("SCOPE ERR:", err);
+    res.status(500).json({ error: "Scope generation failed" });
   }
 });
 
@@ -290,7 +233,18 @@ ${jobContext}
 // ------------------------------
 app.post("/api/generate-pdf", async (req, res) => {
   try {
-    const { job, summary } = req.body || {};
+    const { job, summary } = req.body;
+    const doc = new PDFDocument({ margin: 40 });
+    const chunks = [];
+
+    doc.on("data", (c) => chunks.push(c));
+    doc.on("end", () => {
+      const pdf = Buffer.concat(chunks);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="mitigation-report.pdf"`);
+      res.send(pdf);
+    });
+
     const {
       jobDetails = {},
       insured = {},
@@ -301,157 +255,86 @@ app.post("/api/generate-pdf", async (req, res) => {
       psychroReadings = [],
     } = job || {};
 
-    // Create PDF doc in memory
-    const doc = new PDFDocument({ margin: 40 });
-    const bufferStream = new stream.PassThrough();
-    const chunks = [];
-
-    doc.on("data", (chunk) => chunks.push(chunk));
-    doc.on("end", () => {
-      const pdfBuffer = Buffer.concat(chunks);
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename="mitigation-report-${jobDetails.jobNumber || "job"
-        }.pdf"`
-      );
-      res.send(pdfBuffer);
-    });
-
-    // ---- PDF CONTENT ----
-    doc.fontSize(18).text("Mitigation Report", { align: "center" });
-    doc.moveDown(0.5);
-    doc
-      .fontSize(12)
-      .text(
-        `${jobDetails.companyName || "Company"} – Job #${
-          jobDetails.jobNumber || "N/A"
-        }`,
-        { align: "center" }
-      );
+    // HEADER
+    doc.fontSize(20).text("Mitigation Report", { align: "center" });
     doc.moveDown();
 
-    doc
-      .fontSize(12)
-      .text(
-        `Insured: ${insured.name || "N/A"} | Loss Type: ${
-          jobDetails.lossType || "N/A"
-        } | Class: ${jobDetails.iicrcClass || "N/A"}`
-      );
+    doc.fontSize(11).text(`Job #: ${jobDetails.jobNumber || "N/A"}`);
+    doc.text(`Loss Type: ${jobDetails.lossType || "N/A"}`);
+    doc.text(`Class: ${jobDetails.iicrcClass || "N/A"}`);
     doc.moveDown();
 
-    // Claim / Insured info
+    // INSURED SECTION
     doc.fontSize(14).text("Claim / Insured Information", { underline: true });
     doc.moveDown(0.5);
-    doc.fontSize(11);
-    doc.text(`Property: ${insured.address || ""}`);
-    doc.text(
-      `City/State/Zip: ${insured.city || ""}, ${insured.state || ""} ${
-        insured.zip || ""
-      }`
-    );
-    doc.text(`Insured Phone: ${insured.phone || "N/A"}`);
-    doc.text(`Insured Email: ${insured.email || "N/A"}`);
-    doc.moveDown(0.5);
-    doc.text(`Carrier: ${insurance.carrier || "N/A"}`);
-    doc.text(`Policy #: ${insurance.policyNumber || "N/A"}`);
-    doc.text(`Claim #: ${insurance.claimNumber || "N/A"}`);
-    doc.text(`Adjuster: ${insurance.adjusterName || "N/A"}`);
-    doc.text(`Adjuster Contact: ${insurance.adjusterPhone || "N/A"} | ${insurance.adjusterEmail || "N/A"}`);
+    doc.fontSize(11).text(`Insured: ${insured.name}`);
+    doc.text(`Address: ${insured.address}, ${insured.city} ${insured.state} ${insured.zip}`);
+    doc.text(`Phone: ${insured.phone}`);
+    doc.text(`Email: ${insured.email}`);
+    doc.text(`Carrier: ${insurance.carrier}`);
+    doc.text(`Claim #: ${insurance.claimNumber}`);
     doc.moveDown();
 
-    // Initial inspection
+    // INSPECTION
     doc.fontSize(14).text("Initial Inspection Summary", { underline: true });
     doc.moveDown(0.5);
-    doc.fontSize(11);
-    doc.text(`Inspector: ${inspection.inspector || "N/A"}`);
-    doc.text(`Inspection Date: ${inspection.inspectionDate || "N/A"}`);
-    if (inspection.checklist && inspection.checklist.length > 0) {
-      doc.text(`Key Conditions: ${inspection.checklist.join(", ")}`);
-    }
-    doc.moveDown(0.5);
-    if (inspection.observations) {
-      doc.text(inspection.observations, { align: "left" });
-    }
+    doc.fontSize(11).text(`Inspector: ${inspection.inspector}`);
+    doc.text(`Inspection Date: ${inspection.inspectionDate}`);
+    doc.text(`Conditions: ${(inspection.checklist || []).join(", ")}`);
+    doc.moveDown();
+    doc.text(inspection.observations || "No notes");
     doc.moveDown();
 
-    // Tech hours
-    if (techHours && techHours.length > 0) {
-      doc.fontSize(14).text("Tech Hours & Site Visits", { underline: true });
+    // TECH HOURS
+    if (techHours.length) {
+      doc.fontSize(14).text("Tech Hours", { underline: true });
       doc.moveDown(0.5);
-      doc.fontSize(11);
       techHours.forEach((h) => {
-        doc.text(
-          `- ${h.date || "N/A"} | In: ${h.in || "N/A"} | Out: ${
-            h.out || "N/A"
-          } | Notes: ${h.notes || ""}`
-        );
+        doc.fontSize(11).text(`• ${h.date} | In: ${h.in} Out: ${h.out} | ${h.notes}`);
       });
       doc.moveDown();
     }
 
-    // Rooms
-    if (rooms && rooms.length > 0) {
-      doc.fontSize(14).text("Room-by-Room Summary", { underline: true });
+    // ROOMS
+    if (rooms.length) {
+      doc.fontSize(14).text("Rooms", { underline: true });
       doc.moveDown(0.5);
-      doc.fontSize(11);
       rooms.forEach((r, idx) => {
-        doc.text(`Room ${idx + 1}: ${r.name || "Unnamed Room"}`, {
-          underline: true,
-        });
-        if (r.checklist && r.checklist.length > 0) {
-          doc.text(`Checklist: ${r.checklist.join(", ")}`);
-        }
-        if (r.narrative) {
-          doc.text(`Work Performed: ${r.narrative}`);
-        }
-        doc.moveDown(0.3);
-        if (r.dryLogs && r.dryLogs.length > 0) {
-          doc.text("Dry Logs:");
-          r.dryLogs.forEach((d) => {
-            doc.text(
-              `  - ${d.date || "N/A"} ${d.time || ""} | ${d.reading || ""}`
-            );
-          });
-        }
+        doc.fontSize(12).text(`Room ${idx + 1}: ${r.name}`, { underline: true });
+        doc.fontSize(11).text(`Checklist: ${(r.checklist || []).join(", ")}`);
+        doc.text(`Narrative: ${r.narrative}`);
+        doc.text("Dry Logs:");
+        r.dryLogs?.forEach((d) =>
+          doc.text(`   - ${d.date} ${d.time} | ${d.reading}`)
+        );
         doc.moveDown();
       });
     }
 
-    // Psychrometric overview (table-ish as text)
-    if (psychroReadings && psychroReadings.length > 0) {
-      doc
-        .fontSize(14)
-        .text("Psychrometric Overview (Key Readings)", { underline: true });
+    // PSYCHRO TABLE
+    if (psychroReadings.length) {
+      doc.fontSize(14).text("Psychrometric Overview", { underline: true });
       doc.moveDown(0.5);
-      doc.fontSize(11);
-      psychroReadings.forEach((p) => {
-        doc.text(
-          `- ${p.date || "N/A"} ${p.time || ""} | Temp: ${
-            p.temp || "N/A"
-          } | RH: ${p.rh || "N/A"} | GPP: ${p.gpp || "N/A"}`
-        );
-      });
+      psychroReadings.forEach((p) =>
+        doc
+          .fontSize(11)
+          .text(`• ${p.date} ${p.time} | Temp ${p.temp} | RH ${p.rh} | GPP ${p.gpp}`)
+      );
       doc.moveDown();
     }
 
-    // AI narrative (full summary)
+    // AI SUMMARY PAGE
     if (summary) {
       doc.addPage();
-      doc.fontSize(16).text("AI Mitigation Narrative", {
-        underline: true,
-        align: "center",
-      });
+      doc.fontSize(18).text("AI Mitigation Narrative", { align: "center" });
       doc.moveDown();
-      doc.fontSize(11).text(summary, {
-        align: "left",
-      });
+      doc.fontSize(11).text(summary, { align: "left" });
     }
 
     doc.end();
-  } catch (error) {
-    console.error("PDF ERROR:", error);
-    res.status(500).json({ error: "PDF generation failed." });
+  } catch (err) {
+    console.error("PDF ERR:", err);
+    res.status(500).json({ error: "PDF generation failed" });
   }
 });
 
