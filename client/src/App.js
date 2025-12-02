@@ -404,17 +404,19 @@ function App() {
     <div className="container">
       {/* HEADER */}
       <header className="header-row">
-        <img
-          src="/WaterCleanUpLogoFinal.png"
-          className="company-logo"
-          alt="Logo"
-        />
-        <div className="header-main">
-          <h1>Mitigation Supervisor Console</h1>
-          <p className="subtext">
-            Rooter Plus – Insurer-ready mitigation documentation, AI narratives,
-            and PDF export.
-          </p>
+        <div className="header-left">
+          <img
+            src="/WaterCleanUpLogoFinal.png"
+            className="company-logo"
+            alt="Logo"
+          />
+          <div className="header-main">
+            <h1>Mitigation Supervisor Console</h1>
+            <p className="subtext">
+              Rooter Plus – Insurer-ready mitigation documentation, AI narratives,
+              and PDF export.
+            </p>
+          </div>
         </div>
 
         <div className="header-controls">
@@ -435,9 +437,9 @@ function App() {
         </div>
       </header>
 
-      {/* LOAD JOBS */}
+      {/* SAVED JOBS (FULL WIDTH) */}
       {savedJobs.length > 0 && (
-        <section className="card">
+        <section className="card saved-jobs-card">
           <h2>Saved Jobs</h2>
           <div className="saved-jobs-list">
             {savedJobs.map((j, i) => (
@@ -454,544 +456,573 @@ function App() {
         </section>
       )}
 
-      {/* INITIAL INSPECTION */}
-      <section className="card">
-        <h2>Initial Inspection</h2>
-        <div className="grid-3">
-          <input
-            placeholder="Inspector Name"
-            value={inspection.inspector}
-            onChange={(e) =>
-              setInspection({ ...inspection, inspector: e.target.value })
-            }
-          />
-          <input
-            type="date"
-            value={inspection.inspectionDate}
-            onChange={(e) =>
-              setInspection({
-                ...inspection,
-                inspectionDate: e.target.value,
-              })
-            }
-          />
-          <select
-            value={jobDetails.lossType}
-            onChange={(e) =>
-              setJobDetails({ ...jobDetails, lossType: e.target.value })
-            }
-          >
-            <option value="">Loss Type</option>
-            <option value="Clean Water (Cat 1)">Clean Water (Cat 1)</option>
-            <option value="Grey Water (Cat 2)">Grey Water (Cat 2)</option>
-            <option value="Black Water (Cat 3)">Black Water (Cat 3)</option>
-            <option value="Storm">Storm</option>
-            <option value="Flood">Flood</option>
-            <option value="Sewage Backup">Sewage Backup</option>
-          </select>
-        </div>
-        <textarea
-          placeholder="Observations / Scope of Work"
-          value={inspection.observations}
-          onChange={(e) =>
-            setInspection({ ...inspection, observations: e.target.value })
-          }
-        />
-        <div className="checklist-grid">
-          {inspectionChecklistItems.map((item) => (
-            <label key={item}>
+      {/* TWO COLUMN LAYOUT */}
+      <div className="main-layout">
+        {/* LEFT COLUMN */}
+        <div className="column left-column">
+          {/* Insured / Property */}
+          <section className="card">
+            <h2>Insured / Property</h2>
+            <div className="grid-3">
               <input
-                type="checkbox"
-                checked={inspection.checklist.includes(item)}
-                onChange={() => toggleInspectionItem(item)}
+                placeholder="Insured Name"
+                value={insured.name}
+                onChange={(e) =>
+                  setInsured({ ...insured, name: e.target.value })
+                }
               />
-              {item}
-            </label>
-          ))}
-        </div>
-      </section>
+              <input
+                placeholder="Phone"
+                value={insured.phone}
+                onChange={(e) =>
+                  setInsured({ ...insured, phone: e.target.value })
+                }
+              />
+              <input
+                placeholder="Email"
+                value={insured.email}
+                onChange={(e) =>
+                  setInsured({ ...insured, email: e.target.value })
+                }
+              />
+            </div>
+            <div className="grid-3">
+              <input
+                placeholder="Address"
+                value={insured.address}
+                onChange={(e) =>
+                  setInsured({ ...insured, address: e.target.value })
+                }
+              />
+              <input
+                placeholder="City"
+                value={insured.city}
+                onChange={(e) =>
+                  setInsured({ ...insured, city: e.target.value })
+                }
+              />
+              <input
+                placeholder="State"
+                value={insured.state}
+                onChange={(e) =>
+                  setInsured({ ...insured, state: e.target.value })
+                }
+              />
+            </div>
+            <div className="grid-3">
+              <input
+                placeholder="ZIP"
+                value={insured.zip}
+                onChange={(e) =>
+                  setInsured({ ...insured, zip: e.target.value })
+                }
+              />
+            </div>
+          </section>
 
-      {/* JOB / INSURED / INSURANCE */}
-      <section className="card">
-        <h2>Job & Loss Details</h2>
-        <div className="grid-3">
-          <input
-            placeholder="Company Name"
-            value={jobDetails.companyName}
-            onChange={(e) =>
-              setJobDetails({ ...jobDetails, companyName: e.target.value })
-            }
-          />
-          <input
-            placeholder="Job #"
-            value={jobDetails.jobNumber}
-            onChange={(e) =>
-              setJobDetails({ ...jobDetails, jobNumber: e.target.value })
-            }
-          />
-          <select
-            value={jobDetails.priority}
-            onChange={(e) =>
-              setJobDetails({ ...jobDetails, priority: e.target.value })
-            }
-          >
-            <option value="Standard">Priority: Standard</option>
-            <option value="Emergency">Priority: Emergency</option>
-            <option value="After Hours">Priority: After Hours</option>
-            <option value="High">Priority: High</option>
-          </select>
-        </div>
-        <div className="grid-3">
-          <input
-            placeholder="Technician"
-            value={jobDetails.technician}
-            onChange={(e) =>
-              setJobDetails({ ...jobDetails, technician: e.target.value })
-            }
-          />
-          <input
-            placeholder="Supervisor"
-            value={jobDetails.supervisor}
-            onChange={(e) =>
-              setJobDetails({ ...jobDetails, supervisor: e.target.value })
-            }
-          />
-          <select
-            value={jobDetails.iicrcClass}
-            onChange={(e) =>
-              setJobDetails({ ...jobDetails, iicrcClass: e.target.value })
-            }
-          >
-            <option value="">IICRC Class</option>
-            <option value="Class 1">Class 1 – Small amount of wet materials</option>
-            <option value="Class 2">Class 2 – Significant area affected</option>
-            <option value="Class 3">Class 3 – Walls / Insulation soaked</option>
-            <option value="Class 4">
-              Class 4 – Specialty drying (wood, plaster)
-            </option>
-          </select>
-        </div>
-        <div className="grid-3">
-          <input
-            type="date"
-            value={jobDetails.dateOfLoss}
-            onChange={(e) =>
-              setJobDetails({ ...jobDetails, dateOfLoss: e.target.value })
-            }
-          />
-          <input
-            type="date"
-            value={jobDetails.inspectionDate}
-            onChange={(e) =>
-              setJobDetails({
-                ...jobDetails,
-                inspectionDate: e.target.value,
-              })
-            }
-          />
-          <input
-            placeholder="Source of Loss"
-            value={jobDetails.sourceOfLoss}
-            onChange={(e) =>
-              setJobDetails({
-                ...jobDetails,
-                sourceOfLoss: e.target.value,
-              })
-            }
-          />
-        </div>
-      </section>
+          {/* Insurance & Billing */}
+          <section className="card">
+            <h2>Insurance & Billing</h2>
+            <div className="grid-3">
+              <input
+                placeholder="Carrier"
+                value={insurance.carrier}
+                onChange={(e) =>
+                  setInsurance({ ...insurance, carrier: e.target.value })
+                }
+              />
+              <input
+                placeholder="Policy #"
+                value={insurance.policyNumber}
+                onChange={(e) =>
+                  setInsurance({
+                    ...insurance,
+                    policyNumber: e.target.value,
+                  })
+                }
+              />
+              <input
+                placeholder="Claim #"
+                value={insurance.claimNumber}
+                onChange={(e) =>
+                  setInsurance({
+                    ...insurance,
+                    claimNumber: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className="grid-3">
+              <input
+                placeholder="Deductible"
+                value={insurance.deductible}
+                onChange={(e) =>
+                  setInsurance({
+                    ...insurance,
+                    deductible: e.target.value,
+                  })
+                }
+              />
+              <input
+                placeholder="Adjuster Name"
+                value={insurance.adjusterName}
+                onChange={(e) =>
+                  setInsurance({
+                    ...insurance,
+                    adjusterName: e.target.value,
+                  })
+                }
+              />
+              <input
+                placeholder="Adjuster Phone"
+                value={insurance.adjusterPhone}
+                onChange={(e) =>
+                  setInsurance({
+                    ...insurance,
+                    adjusterPhone: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className="grid-3">
+              <input
+                placeholder="Adjuster Email"
+                value={insurance.adjusterEmail}
+                onChange={(e) =>
+                  setInsurance({
+                    ...insurance,
+                    adjusterEmail: e.target.value,
+                  })
+                }
+              />
+              <input
+                placeholder="Billing Status"
+                value={insurance.billingStatus}
+                onChange={(e) =>
+                  setInsurance({
+                    ...insurance,
+                    billingStatus: e.target.value,
+                  })
+                }
+              />
+            </div>
+          </section>
 
-      <section className="card">
-        <h2>Insured / Property</h2>
-        <div className="grid-3">
-          <input
-            placeholder="Insured Name"
-            value={insured.name}
-            onChange={(e) =>
-              setInsured({ ...insured, name: e.target.value })
-            }
-          />
-          <input
-            placeholder="Phone"
-            value={insured.phone}
-            onChange={(e) =>
-              setInsured({ ...insured, phone: e.target.value })
-            }
-          />
-          <input
-            placeholder="Email"
-            value={insured.email}
-            onChange={(e) =>
-              setInsured({ ...insured, email: e.target.value })
-            }
-          />
-        </div>
-        <div className="grid-3">
-          <input
-            placeholder="Address"
-            value={insured.address}
-            onChange={(e) =>
-              setInsured({ ...insured, address: e.target.value })
-            }
-          />
-          <input
-            placeholder="City"
-            value={insured.city}
-            onChange={(e) =>
-              setInsured({ ...insured, city: e.target.value })
-            }
-          />
-          <input
-            placeholder="State"
-            value={insured.state}
-            onChange={(e) =>
-              setInsured({ ...insured, state: e.target.value })
-            }
-          />
-        </div>
-        <div className="grid-3">
-          <input
-            placeholder="ZIP"
-            value={insured.zip}
-            onChange={(e) =>
-              setInsured({ ...insured, zip: e.target.value })
-            }
-          />
-        </div>
-      </section>
-
-      <section className="card">
-        <h2>Insurance & Billing</h2>
-        <div className="grid-3">
-          <input
-            placeholder="Carrier"
-            value={insurance.carrier}
-            onChange={(e) =>
-              setInsurance({ ...insurance, carrier: e.target.value })
-            }
-          />
-          <input
-            placeholder="Policy #"
-            value={insurance.policyNumber}
-            onChange={(e) =>
-              setInsurance({
-                ...insurance,
-                policyNumber: e.target.value,
-              })
-            }
-          />
-          <input
-            placeholder="Claim #"
-            value={insurance.claimNumber}
-            onChange={(e) =>
-              setInsurance({
-                ...insurance,
-                claimNumber: e.target.value,
-              })
-            }
-          />
-        </div>
-        <div className="grid-3">
-          <input
-            placeholder="Deductible"
-            value={insurance.deductible}
-            onChange={(e) =>
-              setInsurance({
-                ...insurance,
-                deductible: e.target.value,
-              })
-            }
-          />
-          <input
-            placeholder="Adjuster Name"
-            value={insurance.adjusterName}
-            onChange={(e) =>
-              setInsurance({
-                ...insurance,
-                adjusterName: e.target.value,
-              })
-            }
-          />
-          <input
-            placeholder="Adjuster Phone"
-            value={insurance.adjusterPhone}
-            onChange={(e) =>
-              setInsurance({
-                ...insurance,
-                adjusterPhone: e.target.value,
-              })
-            }
-          />
-        </div>
-        <div className="grid-3">
-          <input
-            placeholder="Adjuster Email"
-            value={insurance.adjusterEmail}
-            onChange={(e) =>
-              setInsurance({
-                ...insurance,
-                adjusterEmail: e.target.value,
-              })
-            }
-          />
-          <input
-            placeholder="Billing Status"
-            value={insurance.billingStatus}
-            onChange={(e) =>
-              setInsurance({
-                ...insurance,
-                billingStatus: e.target.value,
-              })
-            }
-          />
-        </div>
-      </section>
-
-      {/* TECH HOURS */}
-      <section className="card">
-        <h2>Tech Hours</h2>
-        {techHours.map((entry, idx) => (
-          <div className="grid-4" key={idx}>
-            <input
-              type="date"
-              value={entry.date}
-              onChange={(e) =>
-                updateTechHour(idx, "date", e.target.value)
-              }
-            />
-            <input
-              type="time"
-              value={entry.in}
-              onChange={(e) =>
-                updateTechHour(idx, "in", e.target.value)
-              }
-            />
-            <input
-              type="time"
-              value={entry.out}
-              onChange={(e) =>
-                updateTechHour(idx, "out", e.target.value)
-              }
-            />
-            <input
-              placeholder="Notes"
-              value={entry.notes}
-              onChange={(e) =>
-                updateTechHour(idx, "notes", e.target.value)
-              }
-            />
-          </div>
-        ))}
-        <button className="btn" onClick={addTechHour}>
-          + Add Entry
-        </button>
-      </section>
-
-      {/* ROOMS & DRY LOGS */}
-      <section className="card">
-        <h2>Rooms & Dry Logs</h2>
-        {rooms.map((room, idx) => (
-          <div key={idx} className="room-box">
-            <input
-              placeholder="Room Name"
-              value={room.name}
-              onChange={(e) =>
-                updateRoom(idx, "name", e.target.value)
-              }
-            />
+          {/* Initial Inspection */}
+          <section className="card">
+            <h2>Initial Inspection</h2>
+            <div className="grid-3">
+              <input
+                placeholder="Inspector Name"
+                value={inspection.inspector}
+                onChange={(e) =>
+                  setInspection({ ...inspection, inspector: e.target.value })
+                }
+              />
+              <input
+                type="date"
+                value={inspection.inspectionDate}
+                onChange={(e) =>
+                  setInspection({
+                    ...inspection,
+                    inspectionDate: e.target.value,
+                  })
+                }
+              />
+              <select
+                value={jobDetails.lossType}
+                onChange={(e) =>
+                  setJobDetails({ ...jobDetails, lossType: e.target.value })
+                }
+              >
+                <option value="">Loss Type</option>
+                <option value="Clean Water (Cat 1)">Clean Water (Cat 1)</option>
+                <option value="Grey Water (Cat 2)">Grey Water (Cat 2)</option>
+                <option value="Black Water (Cat 3)">Black Water (Cat 3)</option>
+                <option value="Storm">Storm</option>
+                <option value="Flood">Flood</option>
+                <option value="Sewage Backup">Sewage Backup</option>
+              </select>
+            </div>
             <textarea
-              placeholder="Work Done / Narrative"
-              value={room.narrative}
+              placeholder="Observations / Scope of Work"
+              value={inspection.observations}
               onChange={(e) =>
-                updateRoom(idx, "narrative", e.target.value)
+                setInspection({ ...inspection, observations: e.target.value })
               }
             />
-            <h4>Checklist</h4>
             <div className="checklist-grid">
-              {roomChecklistItems.map((item) => (
+              {inspectionChecklistItems.map((item) => (
                 <label key={item}>
                   <input
                     type="checkbox"
-                    checked={room.checklist?.includes(item)}
-                    onChange={() => toggleRoomChecklist(idx, item)}
+                    checked={inspection.checklist.includes(item)}
+                    onChange={() => toggleInspectionItem(item)}
                   />
                   {item}
                 </label>
               ))}
             </div>
+          </section>
 
-            <button
-              className="btn"
-              onClick={() => addDryLog(idx)}
-            >
-              + Add Dry Log
-            </button>
-            {room.dryLogs?.map((log, i) => (
-              <div key={i} className="grid-3">
+          {/* Job & Loss Details */}
+          <section className="card">
+            <h2>Job & Loss Details</h2>
+            <div className="grid-3">
+              <input
+                placeholder="Company Name"
+                value={jobDetails.companyName}
+                onChange={(e) =>
+                  setJobDetails({
+                    ...jobDetails,
+                    companyName: e.target.value,
+                  })
+                }
+              />
+              <input
+                placeholder="Job #"
+                value={jobDetails.jobNumber}
+                onChange={(e) =>
+                  setJobDetails({ ...jobDetails, jobNumber: e.target.value })
+                }
+              />
+              <select
+                value={jobDetails.priority}
+                onChange={(e) =>
+                  setJobDetails({ ...jobDetails, priority: e.target.value })
+                }
+              >
+                <option value="Standard">Priority: Standard</option>
+                <option value="Emergency">Priority: Emergency</option>
+                <option value="After Hours">Priority: After Hours</option>
+                <option value="High">Priority: High</option>
+              </select>
+            </div>
+            <div className="grid-3">
+              <input
+                placeholder="Technician"
+                value={jobDetails.technician}
+                onChange={(e) =>
+                  setJobDetails({
+                    ...jobDetails,
+                    technician: e.target.value,
+                  })
+                }
+              />
+              <input
+                placeholder="Supervisor"
+                value={jobDetails.supervisor}
+                onChange={(e) =>
+                  setJobDetails({
+                    ...jobDetails,
+                    supervisor: e.target.value,
+                  })
+                }
+              />
+              <select
+                value={jobDetails.iicrcClass}
+                onChange={(e) =>
+                  setJobDetails({ ...jobDetails, iicrcClass: e.target.value })
+                }
+              >
+                <option value="">IICRC Class</option>
+                <option value="Class 1">
+                  Class 1 – Small amount of wet materials
+                </option>
+                <option value="Class 2">
+                  Class 2 – Significant area affected
+                </option>
+                <option value="Class 3">
+                  Class 3 – Walls / Insulation soaked
+                </option>
+                <option value="Class 4">
+                  Class 4 – Specialty drying (wood, plaster)
+                </option>
+              </select>
+            </div>
+            <div className="grid-3">
+              <input
+                type="date"
+                value={jobDetails.dateOfLoss}
+                onChange={(e) =>
+                  setJobDetails({
+                    ...jobDetails,
+                    dateOfLoss: e.target.value,
+                  })
+                }
+              />
+              <input
+                type="date"
+                value={jobDetails.inspectionDate}
+                onChange={(e) =>
+                  setJobDetails({
+                    ...jobDetails,
+                    inspectionDate: e.target.value,
+                  })
+                }
+              />
+              <input
+                placeholder="Source of Loss"
+                value={jobDetails.sourceOfLoss}
+                onChange={(e) =>
+                  setJobDetails({
+                    ...jobDetails,
+                    sourceOfLoss: e.target.value,
+                  })
+                }
+              />
+            </div>
+          </section>
+        </div>
+
+        {/* RIGHT COLUMN */}
+        <div className="column right-column">
+          {/* Tech Hours */}
+          <section className="card">
+            <h2>Tech Hours</h2>
+            {techHours.map((entry, idx) => (
+              <div className="grid-4" key={idx}>
                 <input
                   type="date"
-                  value={log.date}
+                  value={entry.date}
                   onChange={(e) =>
-                    updateDryLog(idx, i, "date", e.target.value)
+                    updateTechHour(idx, "date", e.target.value)
                   }
                 />
                 <input
                   type="time"
-                  value={log.time}
+                  value={entry.in}
                   onChange={(e) =>
-                    updateDryLog(idx, i, "time", e.target.value)
+                    updateTechHour(idx, "in", e.target.value)
                   }
                 />
                 <input
-                  placeholder="Moisture Reading"
-                  value={log.reading}
+                  type="time"
+                  value={entry.out}
                   onChange={(e) =>
-                    updateDryLog(idx, i, "reading", e.target.value)
+                    updateTechHour(idx, "out", e.target.value)
+                  }
+                />
+                <input
+                  placeholder="Notes"
+                  value={entry.notes}
+                  onChange={(e) =>
+                    updateTechHour(idx, "notes", e.target.value)
                   }
                 />
               </div>
             ))}
+            <button className="btn" onClick={addTechHour}>
+              + Add Entry
+            </button>
+          </section>
 
-            <div className="room-photo-row">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handlePhotoUpload(idx, e)}
-              />
-              {room.photo && (
-                <img
-                  src={room.photo}
-                  className="room-photo"
-                  alt="Room"
+          {/* Rooms & Dry Logs */}
+          <section className="card">
+            <h2>Rooms & Dry Logs</h2>
+            {rooms.map((room, idx) => (
+              <div key={idx} className="room-box">
+                <input
+                  placeholder="Room Name"
+                  value={room.name}
+                  onChange={(e) =>
+                    updateRoom(idx, "name", e.target.value)
+                  }
                 />
-              )}
+                <textarea
+                  placeholder="Work Done / Narrative"
+                  value={room.narrative}
+                  onChange={(e) =>
+                    updateRoom(idx, "narrative", e.target.value)
+                  }
+                />
+                <h4>Checklist</h4>
+                <div className="checklist-grid">
+                  {roomChecklistItems.map((item) => (
+                    <label key={item}>
+                      <input
+                        type="checkbox"
+                        checked={room.checklist?.includes(item)}
+                        onChange={() => toggleRoomChecklist(idx, item)}
+                      />
+                      {item}
+                    </label>
+                  ))}
+                </div>
+
+                <button
+                  className="btn"
+                  onClick={() => addDryLog(idx)}
+                >
+                  + Add Dry Log
+                </button>
+                {room.dryLogs?.map((log, i) => (
+                  <div key={i} className="grid-3">
+                    <input
+                      type="date"
+                      value={log.date}
+                      onChange={(e) =>
+                        updateDryLog(idx, i, "date", e.target.value)
+                      }
+                    />
+                    <input
+                      type="time"
+                      value={log.time}
+                      onChange={(e) =>
+                        updateDryLog(idx, i, "time", e.target.value)
+                      }
+                    />
+                    <input
+                      placeholder="Moisture Reading"
+                      value={log.reading}
+                      onChange={(e) =>
+                        updateDryLog(idx, i, "reading", e.target.value)
+                      }
+                    />
+                  </div>
+                ))}
+
+                <div className="room-photo-row">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handlePhotoUpload(idx, e)}
+                  />
+                  {room.photo && (
+                    <img
+                      src={room.photo}
+                      className="room-photo"
+                      alt="Room"
+                    />
+                  )}
+                </div>
+
+                <button
+                  className="btn"
+                  onClick={() => handleAnalyzeRoomPhoto(idx)}
+                >
+                  AI Describe From Photo
+                </button>
+              </div>
+            ))}
+            <button className="btn" onClick={addRoom}>
+              + Add Room
+            </button>
+          </section>
+
+          {/* Psychrometric Readings */}
+          <section className="card">
+            <h2>Psychrometric Readings</h2>
+            {psychroReadings.map((row, idx) => (
+              <div key={idx} className="grid-5">
+                <input
+                  type="date"
+                  value={row.date}
+                  onChange={(e) =>
+                    updateReading(idx, "date", e.target.value)
+                  }
+                />
+                <input
+                  type="time"
+                  value={row.time}
+                  onChange={(e) =>
+                    updateReading(idx, "time", e.target.value)
+                  }
+                />
+                <input
+                  placeholder="Temp (°F)"
+                  value={row.temp}
+                  onChange={(e) =>
+                    updateReading(idx, "temp", e.target.value)
+                  }
+                />
+                <input
+                  placeholder="RH (%)"
+                  value={row.rh}
+                  onChange={(e) =>
+                    updateReading(idx, "rh", e.target.value)
+                  }
+                />
+                <input
+                  placeholder="GPP"
+                  value={row.gpp}
+                  onChange={(e) =>
+                    updateReading(idx, "gpp", e.target.value)
+                  }
+                />
+              </div>
+            ))}
+            <button className="btn" onClick={addReading}>
+              + Add Reading
+            </button>
+            <button
+              className="btn secondary"
+              onClick={handleAnalyzePsychro}
+            >
+              Analyze Psychrometrics (AI)
+            </button>
+            {psychroAnalysis && (
+              <div className="ai-section">
+                <h3>AI Psychrometric Analysis</h3>
+                <p>{psychroAnalysis}</p>
+              </div>
+            )}
+          </section>
+
+          {/* AI SECTIONS */}
+          <section className="card">
+            <h2>AI Outputs</h2>
+
+            <div className="ai-button-row">
+              <button
+                className="btn btn-primary"
+                onClick={handleGenerateSummary}
+              >
+                Generate AI Insurance Summary
+              </button>
+              <button
+                className="btn"
+                onClick={handleGenerateScope}
+              >
+                Generate Scope of Work
+              </button>
+              <button
+                className="btn"
+                onClick={handleGenerateHazardPlan}
+              >
+                Generate Hazard / Safety Plan
+              </button>
             </div>
 
-            <button
-              className="btn"
-              onClick={() => handleAnalyzeRoomPhoto(idx)}
-            >
-              AI Describe From Photo
-            </button>
-          </div>
-        ))}
-        <button className="btn" onClick={addRoom}>
-          + Add Room
-        </button>
-      </section>
+            {loading && (
+              <p className="loading-text">
+                AI is thinking like a mitigation supervisor…
+              </p>
+            )}
 
-      {/* PSYCHROMETRIC READINGS */}
-      <section className="card">
-        <h2>Psychrometric Readings</h2>
-        {psychroReadings.map((row, idx) => (
-          <div key={idx} className="grid-5">
-            <input
-              type="date"
-              value={row.date}
-              onChange={(e) =>
-                updateReading(idx, "date", e.target.value)
-              }
-            />
-            <input
-              type="time"
-              value={row.time}
-              onChange={(e) =>
-                updateReading(idx, "time", e.target.value)
-              }
-            />
-            <input
-              placeholder="Temp (°F)"
-              value={row.temp}
-              onChange={(e) =>
-                updateReading(idx, "temp", e.target.value)
-              }
-            />
-            <input
-              placeholder="RH (%)"
-              value={row.rh}
-              onChange={(e) =>
-                updateReading(idx, "rh", e.target.value)
-              }
-            />
-            <input
-              placeholder="GPP"
-              value={row.gpp}
-              onChange={(e) =>
-                updateReading(idx, "gpp", e.target.value)
-              }
-            />
-          </div>
-        ))}
-        <button className="btn" onClick={addReading}>
-          + Add Reading
-        </button>
-        <button
-          className="btn secondary"
-          onClick={handleAnalyzePsychro}
-        >
-          Analyze Psychrometrics (AI)
-        </button>
-        {psychroAnalysis && (
-          <div className="ai-section">
-            <h3>AI Psychrometric Analysis</h3>
-            <p>{psychroAnalysis}</p>
-          </div>
-        )}
-      </section>
+            {aiSummary && (
+              <div className="ai-section">
+                <h3>AI Insurance Summary</h3>
+                <p>{aiSummary}</p>
+              </div>
+            )}
 
-      {/* AI SECTIONS */}
-      <section className="card">
-        <h2>AI Outputs</h2>
+            {scopeText && (
+              <div className="ai-section">
+                <h3>Scope of Work (Xactimate-Style Narrative)</h3>
+                <p>{scopeText}</p>
+              </div>
+            )}
 
-        <div className="ai-button-row">
-          <button
-            className="btn btn-primary"
-            onClick={handleGenerateSummary}
-          >
-            Generate AI Insurance Summary
-          </button>
-          <button
-            className="btn"
-            onClick={handleGenerateScope}
-          >
-            Generate Scope of Work
-          </button>
-          <button
-            className="btn"
-            onClick={handleGenerateHazardPlan}
-          >
-            Generate Hazard / Safety Plan
-          </button>
+            {hazardPlan && (
+              <div className="ai-section">
+                <h3>Hazard / Safety Plan</h3>
+                <p>{hazardPlan}</p>
+              </div>
+            )}
+          </section>
         </div>
-
-        {loading && (
-          <p className="loading-text">
-            AI is thinking like a mitigation supervisor…
-          </p>
-        )}
-
-        {aiSummary && (
-          <div className="ai-section">
-            <h3>AI Insurance Summary</h3>
-            <p>{aiSummary}</p>
-          </div>
-        )}
-
-        {scopeText && (
-          <div className="ai-section">
-            <h3>Scope of Work (Xactimate-Style Narrative)</h3>
-            <p>{scopeText}</p>
-          </div>
-        )}
-
-        {hazardPlan && (
-          <div className="ai-section">
-            <h3>Hazard / Safety Plan</h3>
-            <p>{hazardPlan}</p>
-          </div>
-        )}
-      </section>
+      </div>
     </div>
   );
 }
