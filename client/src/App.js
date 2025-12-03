@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import "./styles.css";
 
@@ -8,38 +8,29 @@ const API_BASE =
 
 function App() {
   /* =============================================
-     LOAD / SAVE JOBS (LocalStorage) + HISTORY
+     LOAD / SAVE JOBS (LocalStorage)
   ============================================= */
   const [savedJobs, setSavedJobs] = useState([]);
   const [jobName, setJobName] = useState("");
-  const [historySearch, setHistorySearch] = useState("");
 
   useEffect(() => {
     const jobs = JSON.parse(localStorage.getItem("mitigationJobs")) || [];
     setSavedJobs(jobs);
   }, []);
 
-  const buildJobPayload = () => ({
-    jobDetails,
-    insured,
-    insurance,
-    inspection,
-    techHours,
-    rooms,
-    psychroReadings,
-  });
-
   const saveJob = () => {
     if (!jobName) return alert("Enter a job name!");
-
-    const payload = buildJobPayload();
-
     const newJob = {
       jobName,
       timestamp: new Date().toISOString(),
-      ...payload,
+      jobDetails,
+      insured,
+      insurance,
+      inspection,
+      techHours,
+      rooms,
+      psychroReadings,
     };
-
     const updated = [...savedJobs, newJob];
     localStorage.setItem("mitigationJobs", JSON.stringify(updated));
     setSavedJobs(updated);
@@ -47,52 +38,14 @@ function App() {
   };
 
   const loadJob = (job) => {
-    setJobDetails(job.jobDetails || jobDetails);
-    setInsured(job.insured || insured);
-    setInsurance(job.insurance || insurance);
-    setInspection(job.inspection || inspection);
-    setTechHours(job.techHours || techHours);
-    setRooms(job.rooms || rooms);
-    setPsychroReadings(job.psychroReadings || psychroReadings);
+    setJobDetails(job.jobDetails);
+    setInsured(job.insured);
+    setInsurance(job.insurance);
+    setInspection(job.inspection);
+    setTechHours(job.techHours);
+    setRooms(job.rooms);
+    setPsychroReadings(job.psychroReadings);
     alert("Job Loaded!");
-  };
-
-  const deleteJob = (idx) => {
-    const job = savedJobs[idx];
-    const name = job?.jobName || "this job";
-    if (!window.confirm(`Delete "${name}" from history?`)) return;
-
-    const updated = savedJobs.filter((_, i) => i !== idx);
-    setSavedJobs(updated);
-    localStorage.setItem("mitigationJobs", JSON.stringify(updated));
-  };
-
-  const filteredJobs = savedJobs.filter((j) => {
-    if (!historySearch.trim()) return true;
-    const jd = j.jobDetails || {};
-    const ins = j.insured || {};
-    const haystack = `${j.jobName || ""} ${ins.name || ""} ${
-      jd.jobNumber || ""
-    } ${jd.lossType || ""}`.toLowerCase();
-    return haystack.includes(historySearch.toLowerCase());
-  });
-
-  const formatJobRow = (job) => {
-    const jd = job.jobDetails || {};
-    const ins = job.insured || {};
-    const name = job.jobName || "No Job Name";
-    const insuredName = ins.name || "No Insured Name";
-    const jobNum = jd.jobNumber ? `Job #${jd.jobNumber}` : "No Job #";
-    const loss = jd.lossType || "Loss type N/A";
-    const when = job.timestamp
-      ? new Date(job.timestamp).toLocaleString("en-US")
-      : "Unknown date";
-
-    return {
-      title: `${name}`,
-      subtitle: `${insuredName} • ${jobNum} • ${loss}`,
-      meta: `${when}`,
-    };
   };
 
   /* =============================================
@@ -170,17 +123,12 @@ function App() {
   ]);
 
   const addTechHour = () =>
-    setTechHours((prev) => [
-      ...prev,
-      { date: "", in: "", out: "", notes: "" },
-    ]);
+    setTechHours([...techHours, { date: "", in: "", out: "", notes: "" }]);
 
   const updateTechHour = (idx, field, value) => {
-    setTechHours((prev) => {
-      const updated = [...prev];
-      updated[idx][field] = value;
-      return updated;
-    });
+    const updated = [...techHours];
+    updated[idx][field] = value;
+    setTechHours(updated);
   };
 
   /* =============================================
@@ -307,8 +255,163 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   /* =============================================
+     HIDDEN CHART CANVASES (for PDF)
+  ============================================= */
+  const dryChartRef = useRef(null);
+  const psychroChartRef = useRef(null);
+
+  /* =============================================
+     HELPERS FOR CHART DATA
+  ============================================= */
+  function buildDryLogSeries() {
+    const points = [];
+    rooms.forEach((room) => {
+      (room.dryLogs || []).forEach((log) => {
+        const value = parseFloat(log.reading);
+        if (!isNaN(value)) {
+          const label = `${log.date || ""} ${log.time || ""}`.trim() || "Reading";
+          points.push({ label, value });
+        }
+      });
+    });
+    return {
+      labels: points.map((p) => p.label),
+      values: points.map((p) => p.value),
+    };
+  }
+
+  function buildPsychroSeries() {
+    const points = [];
+    psychroReadings.forEach((row) => {
+      const value = parseFloat(row.gpp);
+      if (!isNaN(value)) {
+        const label = `${row.date || ""} ${row.time || ""}`.trim() || "Reading";
+        points.push({ label, value });
+      }
+    });
+    return {
+      labels: points.map((p) => p.label),
+      values: points.map((p) => p.value),
+    };
+  }
+
+  function drawLineChart(canvas, labels, values, title, yLabel) {
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx || !labels.length || !values.length) return;
+
+    const width = canvas.width;
+    const height = canvas.height;
+    const paddingLeft = 60;
+    const paddingRight = 20;
+    const paddingTop = 40;
+    const paddingBottom = 50;
+
+    ctx.clearRect(0, 0, width, height);
+
+    // background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+
+    // title
+    ctx.fillStyle = "#111";
+    ctx.font = "16px Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(title, width / 2, 24);
+
+    // compute scale
+    const minVal = Math.min(...values);
+    const maxVal = Math.max(...values);
+    const range = maxVal - minVal || 1;
+    const plotWidth = width - paddingLeft - paddingRight;
+    const plotHeight = height - paddingTop - paddingBottom;
+
+    // axes
+    ctx.strokeStyle = "#555";
+    ctx.lineWidth = 1;
+
+    // Y axis
+    ctx.beginPath();
+    ctx.moveTo(paddingLeft, paddingTop);
+    ctx.lineTo(paddingLeft, height - paddingBottom);
+    ctx.stroke();
+
+    // X axis
+    ctx.beginPath();
+    ctx.moveTo(paddingLeft, height - paddingBottom);
+    ctx.lineTo(width - paddingRight, height - paddingBottom);
+    ctx.stroke();
+
+    // Y axis label
+    ctx.save();
+    ctx.translate(20, height / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = "center";
+    ctx.font = "12px Inter, sans-serif";
+    ctx.fillText(yLabel, 0, 0);
+    ctx.restore();
+
+    // plot line
+    ctx.strokeStyle = "#2e77ff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+
+    values.forEach((val, i) => {
+      const x =
+        paddingLeft +
+        (labels.length === 1 ? plotWidth / 2 : (i / (labels.length - 1)) * plotWidth);
+      const normalized = (val - minVal) / range;
+      const y = paddingTop + (1 - normalized) * plotHeight;
+
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // dots
+    ctx.fillStyle = "#2e77ff";
+    values.forEach((val, i) => {
+      const x =
+        paddingLeft +
+        (labels.length === 1 ? plotWidth / 2 : (i / (labels.length - 1)) * plotWidth);
+      const normalized = (val - minVal) / range;
+      const y = paddingTop + (1 - normalized) * plotHeight;
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // simple X labels (sparse)
+    ctx.font = "10px Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#333";
+    const maxLabels = 6;
+    const step = Math.max(1, Math.floor(labels.length / maxLabels));
+    labels.forEach((label, i) => {
+      if (i % step !== 0 && i !== labels.length - 1) return;
+      const x =
+        paddingLeft +
+        (labels.length === 1 ? plotWidth / 2 : (i / (labels.length - 1)) * plotWidth);
+      const y = height - paddingBottom + 15;
+      const shortLabel =
+        label.length > 12 ? label.slice(5, 10) + "…" : label;
+      ctx.fillText(shortLabel, x, y);
+    });
+  }
+
+  /* =============================================
      AI CALLS
   ============================================= */
+  const buildJobPayload = () => ({
+    jobDetails,
+    insured,
+    insurance,
+    inspection,
+    techHours,
+    rooms,
+    psychroReadings,
+  });
+
   const handleGenerateSummary = async () => {
     try {
       setLoading(true);
@@ -388,7 +491,6 @@ function App() {
         checklist: room.checklist || [],
       });
       const desc = res.data.description || "No description generated.";
-      // Append to room narrative
       setRooms((prev) => {
         const updated = [...prev];
         const current = updated[idx].narrative || "";
@@ -409,6 +511,37 @@ function App() {
   const handleExportPdf = async () => {
     try {
       const job = buildJobPayload();
+
+      // ---- Build chart images (front-end only) ----
+      const drySeries = buildDryLogSeries();
+      const psychroSeries = buildPsychroSeries();
+
+      let dryLogChart = "";
+      let psychroChart = "";
+
+      if (drySeries.labels.length && dryChartRef.current) {
+        drawLineChart(
+          dryChartRef.current,
+          drySeries.labels,
+          drySeries.values,
+          "Dry Log Moisture Trend",
+          "Moisture"
+        );
+        dryLogChart = dryChartRef.current.toDataURL("image/png");
+      }
+
+      if (psychroSeries.labels.length && psychroChartRef.current) {
+        drawLineChart(
+          psychroChartRef.current,
+          psychroSeries.labels,
+          psychroSeries.values,
+          "Psychrometric GPP Trend",
+          "GPP"
+        );
+        psychroChart = psychroChartRef.current.toDataURL("image/png");
+      }
+
+      // ---- Call backend for PDF ----
       const res = await axios.post(
         `${API_BASE}/api/generate-pdf`,
         {
@@ -417,6 +550,8 @@ function App() {
           psychroAnalysis,
           scope: scopeText,
           hazardPlan,
+          dryLogChart,
+          psychroChart,
         },
         { responseType: "blob" }
       );
@@ -472,52 +607,43 @@ function App() {
         </div>
       </header>
 
-      {/* SAVED JOBS (FULL WIDTH) */}
-      <section className="card full-width">
-        <div className="saved-jobs-header">
-          <h2>Saved Jobs</h2>
-          <input
-            className="saved-jobs-search"
-            placeholder="Search jobs / insured / job # / loss type"
-            value={historySearch}
-            onChange={(e) => setHistorySearch(e.target.value)}
-          />
-        </div>
-        {filteredJobs.length === 0 ? (
-          <p className="muted">No saved jobs yet. Save one to build history.</p>
-        ) : (
-          <div className="saved-jobs-list">
-            {filteredJobs.map((j, i) => {
-              const meta = formatJobRow(j);
-              return (
-                <div key={i} className="saved-job-row">
-                  <button
-                    className="saved-job-main"
-                    onClick={() => loadJob(j)}
-                  >
-                    <span className="saved-job-title">{meta.title}</span>
-                    <span className="saved-job-subtitle">{meta.subtitle}</span>
-                    <span className="saved-job-meta">{meta.meta}</span>
-                  </button>
-                  <button
-                    className="saved-job-delete"
-                    onClick={() => deleteJob(i)}
-                    title="Delete saved job"
-                  >
-                    ✕
-                  </button>
-                </div>
-              );
-            })}
+      {/* SAVED JOBS */}
+      {savedJobs.length > 0 && (
+        <section className="card">
+          <div className="saved-jobs-header">
+            <h2>Saved Jobs</h2>
+            <span className="muted">
+              Click a job to load its data back into the console.
+            </span>
           </div>
-        )}
-      </section>
+          <div className="saved-jobs-list">
+            {savedJobs.map((j, i) => (
+              <div key={i} className="saved-job-row">
+                <button
+                  className="saved-job-main"
+                  onClick={() => loadJob(j)}
+                >
+                  <span className="saved-job-title">{j.jobName}</span>
+                  <span className="saved-job-subtitle">
+                    Job #{j.jobDetails?.jobNumber || "N/A"} –{" "}
+                    {j.insured?.name || "Unknown Insured"}
+                  </span>
+                  <span className="saved-job-meta">
+                    Saved:{" "}
+                    {new Date(j.timestamp).toLocaleString("en-US")}
+                  </span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
-      {/* MAIN CONTENT: TWO COLUMNS */}
+      {/* TWO COLUMN MAIN LAYOUT */}
       <div className="two-column-layout">
         {/* LEFT COLUMN */}
-        <div className="column column-left">
-          {/* INSURED / PROPERTY */}
+        <div className="column">
+          {/* Insured / Property */}
           <section className="card">
             <h2>Insured / Property</h2>
             <div className="grid-3">
@@ -577,7 +703,7 @@ function App() {
             </div>
           </section>
 
-          {/* INSURANCE & BILLING */}
+          {/* Insurance & Billing */}
           <section className="card">
             <h2>Insurance & Billing</h2>
             <div className="grid-3">
@@ -665,7 +791,7 @@ function App() {
             </div>
           </section>
 
-          {/* INITIAL INSPECTION */}
+          {/* Initial Inspection */}
           <section className="card">
             <h2>Initial Inspection</h2>
             <div className="grid-3">
@@ -673,7 +799,10 @@ function App() {
                 placeholder="Inspector Name"
                 value={inspection.inspector}
                 onChange={(e) =>
-                  setInspection({ ...inspection, inspector: e.target.value })
+                  setInspection({
+                    ...inspection,
+                    inspector: e.target.value,
+                  })
                 }
               />
               <input
@@ -689,7 +818,10 @@ function App() {
               <select
                 value={jobDetails.lossType}
                 onChange={(e) =>
-                  setJobDetails({ ...jobDetails, lossType: e.target.value })
+                  setJobDetails({
+                    ...jobDetails,
+                    lossType: e.target.value,
+                  })
                 }
               >
                 <option value="">Loss Type</option>
@@ -705,7 +837,10 @@ function App() {
               placeholder="Observations / Scope of Work"
               value={inspection.observations}
               onChange={(e) =>
-                setInspection({ ...inspection, observations: e.target.value })
+                setInspection({
+                  ...inspection,
+                  observations: e.target.value,
+                })
               }
             />
             <div className="checklist-grid">
@@ -722,7 +857,7 @@ function App() {
             </div>
           </section>
 
-          {/* JOB & LOSS DETAILS */}
+          {/* Job & Loss Details */}
           <section className="card">
             <h2>Job & Loss Details</h2>
             <div className="grid-3">
@@ -730,20 +865,29 @@ function App() {
                 placeholder="Company Name"
                 value={jobDetails.companyName}
                 onChange={(e) =>
-                  setJobDetails({ ...jobDetails, companyName: e.target.value })
+                  setJobDetails({
+                    ...jobDetails,
+                    companyName: e.target.value,
+                  })
                 }
               />
               <input
                 placeholder="Job #"
                 value={jobDetails.jobNumber}
                 onChange={(e) =>
-                  setJobDetails({ ...jobDetails, jobNumber: e.target.value })
+                  setJobDetails({
+                    ...jobDetails,
+                    jobNumber: e.target.value,
+                  })
                 }
               />
               <select
                 value={jobDetails.priority}
                 onChange={(e) =>
-                  setJobDetails({ ...jobDetails, priority: e.target.value })
+                  setJobDetails({
+                    ...jobDetails,
+                    priority: e.target.value,
+                  })
                 }
               >
                 <option value="Standard">Priority: Standard</option>
@@ -757,20 +901,29 @@ function App() {
                 placeholder="Technician"
                 value={jobDetails.technician}
                 onChange={(e) =>
-                  setJobDetails({ ...jobDetails, technician: e.target.value })
+                  setJobDetails({
+                    ...jobDetails,
+                    technician: e.target.value,
+                  })
                 }
               />
               <input
                 placeholder="Supervisor"
                 value={jobDetails.supervisor}
                 onChange={(e) =>
-                  setJobDetails({ ...jobDetails, supervisor: e.target.value })
+                  setJobDetails({
+                    ...jobDetails,
+                    supervisor: e.target.value,
+                  })
                 }
               />
               <select
                 value={jobDetails.iicrcClass}
                 onChange={(e) =>
-                  setJobDetails({ ...jobDetails, iicrcClass: e.target.value })
+                  setJobDetails({
+                    ...jobDetails,
+                    iicrcClass: e.target.value,
+                  })
                 }
               >
                 <option value="">IICRC Class</option>
@@ -793,7 +946,10 @@ function App() {
                 type="date"
                 value={jobDetails.dateOfLoss}
                 onChange={(e) =>
-                  setJobDetails({ ...jobDetails, dateOfLoss: e.target.value })
+                  setJobDetails({
+                    ...jobDetails,
+                    dateOfLoss: e.target.value,
+                  })
                 }
               />
               <input
@@ -821,8 +977,8 @@ function App() {
         </div>
 
         {/* RIGHT COLUMN */}
-        <div className="column column-right">
-          {/* TECH HOURS */}
+        <div className="column">
+          {/* Tech Hours */}
           <section className="card">
             <h2>Tech Hours</h2>
             {techHours.map((entry, idx) => (
@@ -862,7 +1018,7 @@ function App() {
             </button>
           </section>
 
-          {/* ROOMS & DRY LOGS */}
+          {/* Rooms & Dry Logs */}
           <section className="card">
             <h2>Rooms & Dry Logs</h2>
             {rooms.map((room, idx) => (
@@ -955,7 +1111,7 @@ function App() {
             </button>
           </section>
 
-          {/* PSYCHROMETRIC READINGS */}
+          {/* Psychrometric Readings */}
           <section className="card">
             <h2>Psychrometric Readings</h2>
             {psychroReadings.map((row, idx) => (
@@ -1014,7 +1170,7 @@ function App() {
             )}
           </section>
 
-          {/* AI OUTPUTS */}
+          {/* AI Outputs */}
           <section className="card">
             <h2>AI Outputs</h2>
 
@@ -1025,16 +1181,10 @@ function App() {
               >
                 Generate AI Insurance Summary
               </button>
-              <button
-                className="btn"
-                onClick={handleGenerateScope}
-              >
+              <button className="btn" onClick={handleGenerateScope}>
                 Generate Scope of Work
               </button>
-              <button
-                className="btn"
-                onClick={handleGenerateHazardPlan}
-              >
+              <button className="btn" onClick={handleGenerateHazardPlan}>
                 Generate Hazard / Safety Plan
               </button>
             </div>
@@ -1068,6 +1218,20 @@ function App() {
           </section>
         </div>
       </div>
+
+      {/* HIDDEN CANVASES FOR PDF CHARTS */}
+      <canvas
+        ref={dryChartRef}
+        width={800}
+        height={400}
+        style={{ display: "none" }}
+      />
+      <canvas
+        ref={psychroChartRef}
+        width={800}
+        height={400}
+        style={{ display: "none" }}
+      />
     </div>
   );
 }
