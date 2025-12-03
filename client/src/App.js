@@ -255,7 +255,7 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   /* =============================================
-     AI CALLS
+     COMMON JOB PAYLOAD
   ============================================= */
   const buildJobPayload = () => ({
     jobDetails,
@@ -267,6 +267,9 @@ function App() {
     psychroReadings,
   });
 
+  /* =============================================
+     AI CALLS
+  ============================================= */
   const handleGenerateSummary = async () => {
     try {
       setLoading(true);
@@ -397,13 +400,14 @@ function App() {
     }
   };
 
-  // NEW: XACTIMATE CSV EXPORT
-  const handleGenerateXactimateCsv = async () => {
+  /* =============================================
+     NEW: XACTIMATE CSV EXPORT (PER ROOM)
+  ============================================= */
+  const handleExportXactimate = async () => {
     try {
-      setLoading(true);
       const job = buildJobPayload();
       const res = await axios.post(
-        `${API_BASE}/api/generate-xactimate-csv`,
+        `${API_BASE}/api/export-xactimate`,
         { job },
         { responseType: "blob" }
       );
@@ -412,14 +416,12 @@ function App() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `xactimate-scope-${jobDetails.jobNumber || "job"}.csv`;
+      a.download = `xactimate-export-${jobDetails.jobNumber || "job"}.csv`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error(err);
-      alert("Xactimate CSV export failed. Check backend / logs.");
-    } finally {
-      setLoading(false);
+      alert("Xactimate export failed. Check backend.");
     }
   };
 
@@ -439,7 +441,7 @@ function App() {
           <h1>Mitigation Supervisor Console</h1>
           <p className="subtext">
             Rooter Plus – Insurer-ready mitigation documentation, AI narratives,
-            and PDF/Xactimate exports.
+            and PDF export.
           </p>
         </div>
 
@@ -454,6 +456,9 @@ function App() {
             <button className="btn" onClick={saveJob}>
               Save Job
             </button>
+            <button className="btn" onClick={handleExportXactimate}>
+              Export Xactimate CSV
+            </button>
             <button className="btn btn-primary" onClick={handleExportPdf}>
               Export Insurance PDF
             </button>
@@ -461,7 +466,7 @@ function App() {
         </div>
       </header>
 
-      {/* SAVED JOBS (HISTORY) */}
+      {/* LOAD JOBS */}
       {savedJobs.length > 0 && (
         <section className="card">
           <h2>Saved Jobs</h2>
@@ -537,7 +542,7 @@ function App() {
         </div>
       </section>
 
-      {/* JOB & LOSS DETAILS */}
+      {/* JOB / INSURED / INSURANCE */}
       <section className="card">
         <h2>Job & Loss Details</h2>
         <div className="grid-3">
@@ -628,7 +633,6 @@ function App() {
         </div>
       </section>
 
-      {/* INSURED / PROPERTY */}
       <section className="card">
         <h2>Insured / Property</h2>
         <div className="grid-3">
@@ -688,7 +692,6 @@ function App() {
         </div>
       </section>
 
-      {/* INSURANCE & BILLING */}
       <section className="card">
         <h2>Insurance & Billing</h2>
         <div className="grid-3">
@@ -990,12 +993,6 @@ function App() {
             onClick={handleGenerateHazardPlan}
           >
             Generate Hazard / Safety Plan
-          </button>
-          <button
-            className="btn"
-            onClick={handleGenerateXactimateCsv}
-          >
-            Download Xactimate CSV
           </button>
         </div>
 
