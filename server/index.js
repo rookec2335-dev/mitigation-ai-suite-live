@@ -15,7 +15,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
-app.use(bodyParser.json({ limit: "10mb" }));
+app.use(bodyParser.json({ limit: "5mb" }));
 
 // ------------------------------
 // Health check
@@ -88,7 +88,7 @@ ${techHours
   .join("\n") || "No hours entered."}
 
 ROOMS & DRY LOGS
-${rooms
+${(rooms || [])
   .map((r, idx) => {
     const dry = (r.dryLogs || [])
       .map(
@@ -108,7 +108,7 @@ ${dry || "    • No dry logs recorded."}
   .join("\n") || "No rooms recorded."}
 
 PSYCHROMETRIC READINGS
-${psychroReadings
+${(psychroReadings || [])
   .map(
     (p) =>
       `- ${p.date || "N/A"} ${p.time || ""} | Temp: ${
@@ -295,17 +295,14 @@ app.post("/api/generate-hazard-plan", async (req, res) => {
     const jobContext = buildJobContext(job);
 
     const prompt = `
-You are a mitigation supervisor creating a SITE HAZARD / SAFETY PLAN.
+You are a mitigation supervisor creating a concise HAZARD / SAFETY PLAN
+for field technicians and for the claim file.
 
-Based on the job data below, create a concise plan with headings:
-1) Site Hazards Identified
-2) PPE Requirements
-3) Containment / Engineering Controls
-4) Electrical / Structural Safety
-5) Microbial / Category 3 Considerations (if applicable)
-6) Tech Safety Instructions & Monitoring Notes
-
-Keep it practical and field-usable. Do not add pricing or policy language.
+Based on the job data below:
+- Identify key safety concerns (electrical, structural, microbial, slip/fall, etc.).
+- Provide clear PPE recommendations.
+- Note any engineering controls (containment, negative air, lock-out/tag-out).
+- Keep it under 2–3 short paragraphs plus up to 5 bullet points.
 
 JOB DATA:
 ${jobContext}
@@ -316,11 +313,11 @@ ${jobContext}
       messages: [{ role: "user", content: prompt }],
     });
 
-    const hazardText =
+    const hazardPlan =
       response.choices?.[0]?.message?.content ||
       "No hazard plan generated.";
 
-    res.json({ hazardPlan: hazardText });
+    res.json({ hazardPlan });
   } catch (error) {
     console.error("AI HAZARD ERROR:", error);
     res.status(500).json({ error: "AI hazard plan generation failed." });
@@ -328,98 +325,29 @@ ${jobContext}
 });
 
 // ------------------------------
-// AI: Analyze Room Photo
+// AI: Room Photo Description (text-based using metadata)
 // ------------------------------
 app.post("/api/analyze-room-photo", async (req, res) => {
   try {
     const { photoData, roomName, checklist = [] } = req.body || {};
-    if (!photoData) {
-      return res.status(400).json({ error: "Missing photoData." });
-    }
-
     const openai = createOpenAI();
-
-    const messages = [
-      {
-        role: "system",
-        content:
-          "You are a mitigation supervisor reviewing job site photos for documentation.",
-      },
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: `
-Look at this mitigation room photo for "${roomName || "room"}".
-Based on the image and typical water mitigation work, describe:
-
-- What work appears to have been done (demo, equipment, containment, cleaning).
-- Any visible safety concerns.
-- Any evidence of remaining moisture or damage.
-
-Room checklist flags: ${(checklist || []).join(", ") || "None"}.
-
-Keep it to 3–6 bullet points.
-            `.trim(),
-          },
-          {
-            type: "image_url",
-            image_url: {
-              url: photoData,
-            },
-          },
-        ],
-      },
-    ];
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages,
-    });
-
-    const description =
-      response.choices?.[0]?.message?.content ||
-      "No photo description generated.";
-
-    res.json({ description });
-  } catch (error) {
-    console.error("AI PHOTO ERROR:", error);
-    res.status(500).json({ error: "Room photo analysis failed." });
-  }
-});
-
-// ------------------------------
-// AI: Xactimate CSV Line Items
-// ------------------------------
-app.post("/api/generate-xactimate-csv", async (req, res) => {
-  try {
-    const job = req.body.job || {};
-    const openai = createOpenAI();
-    const jobContext = buildJobContext(job);
 
     const prompt = `
-You are an experienced mitigation estimator writing Xactimate line items.
+You are documenting mitigation work for insurance.
 
-From the job data below, generate a CSV with the columns:
-Code,Description,Quantity,Unit,Room,Notes
+You are given:
+- Room name: ${roomName || "N/A"}
+- Checklist items: ${(checklist || []).join(", ") || "None checked"}
+- Note: A photo was captured of this room (assume it matches the checklist).
 
-Rules:
-- Use realistic Xactimate-style mitigation/cleaning codes (e.g., WTR DRY, WTR DRYWALL, WTR AMTD, WTR DHMD, CLN HEPA, HMR APP, etc.).
-- Base items on:
-  • Initial inspection observations & checklist
-  • Room narratives
-  • Room checklists (baseboards removed, drywall cuts, flooring removed, equipment used)
-  • Psychrometric/drying progression
-- Infer reasonable quantities where sensible (ballpark is fine).
-- Use units like SF, LF, EA, HR.
-- Group items logically by room when possible (Hall Bath, Living Room, Master Bed, etc.).
-- The first line MUST be the header:
-  Code,Description,Quantity,Unit,Room,Notes
-- Return ONLY raw CSV text. No extra commentary, no backticks, no explanations.
+TASK:
+Write 3–6 sentences describing:
+- What was likely done in this room (demo, drying, cleaning).
+- Any notable conditions (e.g., baseboards removed, flooring demo, containment).
+- Make it sound like a professional field note for the claim file.
 
-JOB DATA:
-${jobContext}
+Do NOT mention that you can't see the photo. Assume the checklist is accurate.
+Keep the tone factual and neutral.
     `.trim();
 
     const response = await openai.chat.completions.create({
@@ -427,19 +355,142 @@ ${jobContext}
       messages: [{ role: "user", content: prompt }],
     });
 
-    const csvText =
+    const description =
       response.choices?.[0]?.message?.content ||
-      "Code,Description,Quantity,Unit,Room,Notes\n";
+      "No description generated.";
+
+    res.json({ description });
+  } catch (error) {
+    console.error("AI ROOM PHOTO ERROR:", error);
+    res.status(500).json({ error: "Room photo analysis failed." });
+  }
+});
+
+// ------------------------------
+// XACTIMATE MAPPING (checklist -> codes)
+// ------------------------------
+const XACTIMATE_MAP = {
+  "Baseboards Removed": {
+    code: "WTR BSE",
+    desc: "Remove baseboards",
+    unit: "LF",
+  },
+  "Carpet Pulled": {
+    code: "WTR PULL",
+    desc: "Pull back carpet",
+    unit: "SF",
+  },
+  "Flooring Removed": {
+    code: "FLR RMV",
+    desc: "Remove damaged flooring",
+    unit: "SF",
+  },
+  "2ft Wall Cut": {
+    code: "WTR DRYWL2",
+    desc: "2' drywall flood cut",
+    unit: "LF",
+  },
+  "4ft Wall Cut": {
+    code: "WTR DRYWL4",
+    desc: "4' drywall flood cut",
+    unit: "LF",
+  },
+  "Containment Setup": {
+    code: "WTR CNTM",
+    desc: "Install containment",
+    unit: "SF",
+  },
+  "Dehumidifier Used": {
+    code: "WTR DHMD",
+    desc: "Dehumidifier (per day)",
+    unit: "DAY",
+  },
+  "Air Movers Installed": {
+    code: "WTR AMTD",
+    desc: "Air mover (per day)",
+    unit: "DAY",
+  },
+  "HEPA Filtration": {
+    code: "CLN HEPA",
+    desc: "HEPA negative air machine (per day)",
+    unit: "DAY",
+  },
+};
+
+// ------------------------------
+// XACTIMATE CSV EXPORT (PER ROOM)
+// ------------------------------
+app.post("/api/export-xactimate", async (req, res) => {
+  try {
+    const job = req.body.job || {};
+    const jobDetails = job.jobDetails || {};
+    const rooms = job.rooms || [];
+
+    const lines = [];
+    // Header
+    lines.push([
+      "Room",
+      "Code",
+      "Description",
+      "Unit",
+      "Quantity",
+      "Notes",
+    ]);
+
+    rooms.forEach((room) => {
+      const roomName = room.name || "Unnamed Room";
+      const checklist = room.checklist || [];
+      const narrative = (room.narrative || "").replace(/\s+/g, " ").trim();
+
+      checklist.forEach((item) => {
+        const mapped = XACTIMATE_MAP[item];
+        if (!mapped) return;
+
+        const notesParts = [];
+        if (narrative) {
+          notesParts.push(`Narrative: ${narrative}`);
+        }
+        notesParts.push("Set quantity per sketch / scope.");
+
+        const notes = notesParts.join(" ");
+
+        lines.push([
+          roomName,
+          mapped.code,
+          mapped.desc,
+          mapped.unit,
+          "",
+          notes,
+        ]);
+      });
+    });
+
+    // Convert to CSV
+    const csv = lines
+      .map((row) =>
+        row
+          .map((val) => {
+            const s = String(val ?? "");
+            if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+              return `"${s.replace(/"/g, '""')}"`;
+            }
+            return s;
+          })
+          .join(",")
+      )
+      .join("\n");
 
     res.setHeader("Content-Type", "text/csv");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="xactimate-scope-${(job.jobDetails && job.jobDetails.jobNumber) || "job"}.csv"`
+      `attachment; filename="xactimate-export-${
+        jobDetails.jobNumber || "job"
+      }.csv"`
     );
-    res.send(csvText);
+    res.send(csv);
   } catch (error) {
-    console.error("AI XACTIMATE CSV ERROR:", error);
-    res.status(500).json({ error: "Xactimate CSV generation failed." });
+    console.error("XACTIMATE EXPORT ERROR:", error);
+    res.status(500).json({ error: "Xactimate export failed." });
   }
 });
 
@@ -448,7 +499,7 @@ ${jobContext}
 // ------------------------------
 app.post("/api/generate-pdf", async (req, res) => {
   try {
-    const { job, summary, psychroAnalysis, scope, hazardPlan } = req.body || {};
+    const { job, summary } = req.body || {};
     const {
       jobDetails = {},
       insured = {},
@@ -469,7 +520,8 @@ app.post("/api/generate-pdf", async (req, res) => {
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="mitigation-report-${jobDetails.jobNumber || "job"
+        `attachment; filename="mitigation-report-${
+          jobDetails.jobNumber || "job"
         }.pdf"`
       );
       res.send(pdfBuffer);
@@ -579,7 +631,7 @@ app.post("/api/generate-pdf", async (req, res) => {
       });
     }
 
-    // Psychrometric overview
+    // Psychrometric overview (text rows)
     if (psychroReadings && psychroReadings.length > 0) {
       doc
         .fontSize(14)
@@ -596,39 +648,17 @@ app.post("/api/generate-pdf", async (req, res) => {
       doc.moveDown();
     }
 
-    // AI narrative / scope / hazard plan
-    if (summary || scope || hazardPlan) {
+    // AI narrative (full summary)
+    if (summary) {
       doc.addPage();
-      doc.fontSize(16).text("AI Mitigation Documentation", {
+      doc.fontSize(16).text("AI Mitigation Narrative", {
         underline: true,
         align: "center",
       });
       doc.moveDown();
-
-      if (summary) {
-        doc.fontSize(14).text("AI Insurance Narrative", { underline: true });
-        doc.moveDown(0.3);
-        doc.fontSize(11).text(summary, { align: "left" });
-        doc.moveDown();
-      }
-
-      if (scope) {
-        doc.fontSize(14).text("Scope of Work (Xactimate-Style)", {
-          underline: true,
-        });
-        doc.moveDown(0.3);
-        doc.fontSize(11).text(scope, { align: "left" });
-        doc.moveDown();
-      }
-
-      if (hazardPlan) {
-        doc.fontSize(14).text("Hazard / Safety Plan", {
-          underline: true,
-        });
-        doc.moveDown(0.3);
-        doc.fontSize(11).text(hazardPlan, { align: "left" });
-        doc.moveDown();
-      }
+      doc.fontSize(11).text(summary, {
+        align: "left",
+      });
     }
 
     doc.end();
