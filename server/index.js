@@ -10,42 +10,12 @@ const bodyParser = require("body-parser");
 const OpenAI = require("openai");
 const PDFDocument = require("pdfkit");
 const stream = require("stream");
-const fs = require("fs");
-const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
-app.use(bodyParser.json({ limit: "5mb" }));
-
-// =============================================
-// SIMPLE FILE-BASED JOB "DATABASE"
-// =============================================
-const DATA_FILE = path.join(__dirname, "jobs-data.json");
-
-function loadJobsFromFile() {
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      const raw = fs.readFileSync(DATA_FILE, "utf8");
-      const json = JSON.parse(raw);
-      if (Array.isArray(json)) return json;
-    }
-  } catch (err) {
-    console.error("Error reading jobs-data.json:", err);
-  }
-  return [];
-}
-
-function saveJobsToFile(jobs) {
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(jobs, null, 2), "utf8");
-  } catch (err) {
-    console.error("Error writing jobs-data.json:", err);
-  }
-}
-
-let jobs = loadJobsFromFile();
+app.use(bodyParser.json({ limit: "10mb" }));
 
 // ------------------------------
 // Health check
@@ -91,14 +61,18 @@ INSURED / PROPERTY
 - Name: ${insured.name || "N/A"}
 - Phone: ${insured.phone || "N/A"}
 - Email: ${insured.email || "N/A"}
-- Address: ${insured.address || ""} ${insured.city || ""} ${insured.state || ""} ${insured.zip || ""}
+- Address: ${insured.address || ""} ${insured.city || ""} ${
+    insured.state || ""
+  } ${insured.zip || ""}
 
 INSURANCE INFO
 - Carrier: ${insurance.carrier || "N/A"}
 - Policy #: ${insurance.policyNumber || "N/A"}
 - Claim #: ${insurance.claimNumber || "N/A"}
 - Deductible: ${insurance.deductible || "N/A"}
-- Adjuster: ${insurance.adjusterName || "N/A"} | ${insurance.adjusterPhone || "N/A"} | ${insurance.adjusterEmail || "N/A"}
+- Adjuster: ${insurance.adjusterName || "N/A"} | ${
+    insurance.adjusterPhone || "N/A"
+  } | ${insurance.adjusterEmail || "N/A"}
 - Billing Status: ${insurance.billingStatus || "N/A"}
 
 INITIAL INSPECTION
@@ -108,17 +82,20 @@ INITIAL INSPECTION
 - Checklist Flags: ${(inspection.checklist || []).join(", ") || "None noted"}
 
 TECH HOURS
-${techHours
+${
+  techHours
     .map(
       (h) =>
         `- ${h.date || "N/A"} | In: ${h.in || "N/A"} | Out: ${
           h.out || "N/A"
         } | Notes: ${h.notes || ""}`
     )
-    .join("\n") || "No hours entered."}
+    .join("\n") || "No hours entered."
+}
 
 ROOMS & DRY LOGS
-${rooms
+${
+  rooms
     .map((r, idx) => {
       const dry = (r.dryLogs || [])
         .map(
@@ -135,103 +112,38 @@ ${rooms
 ${dry || "    • No dry logs recorded."}
 `;
     })
-    .join("\n") || "No rooms recorded."}
+    .join("\n") || "No rooms recorded."
+}
 
 PSYCHROMETRIC READINGS
-${psychroReadings
+${
+  psychroReadings
     .map(
       (p) =>
         `- ${p.date || "N/A"} ${p.time || ""} | Temp: ${
           p.temp || "N/A"
         } | RH: ${p.rh || "N/A"} | GPP: ${p.gpp || "N/A"}`
     )
-    .join("\n") || "No psychrometric readings recorded."}
+    .join("\n") || "No psychrometric readings recorded."
+}
 `;
 }
 
-// =============================================
-// JOB HISTORY API (BACKEND PERSISTENCE)
-// =============================================
-
-// List all jobs (for Job History)
-app.get("/api/jobs", (req, res) => {
-  const list = jobs
-    .slice()
-    .sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""))
-    .map((j) => {
-      const jobDetails = j.job?.jobDetails || {};
-      const insured = j.job?.insured || {};
-      return {
-        id: j.id,
-        jobName: j.jobName,
-        timestamp: j.timestamp,
-        jobNumber: jobDetails.jobNumber || "",
-        insuredName: insured.name || "",
-        address: insured.address || "",
-        city: insured.city || "",
-        state: insured.state || "",
-        lossType: jobDetails.lossType || "",
-      };
-    });
-
-  res.json({ jobs: list });
-});
-
-// Save a job
-app.post("/api/jobs", (req, res) => {
+// Helper: decode base64 image or data URL to Buffer
+function decodeImage(data) {
+  if (!data) return null;
+  const match = data.match(/^data:image\/\w+;base64,(.+)$/);
+  const base64 = match ? match[1] : data;
   try {
-    const { jobName, job } = req.body || {};
-    if (!jobName || !job) {
-      return res
-        .status(400)
-        .json({ error: "jobName and job payload are required." });
-    }
-
-    const id =
-      Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
-
-    const newJob = {
-      id,
-      jobName,
-      timestamp: new Date().toISOString(),
-      job,
-    };
-
-    jobs.push(newJob);
-    saveJobsToFile(jobs);
-
-    res.json({ success: true, job: newJob });
-  } catch (err) {
-    console.error("SAVE JOB ERROR:", err);
-    res.status(500).json({ error: "Failed to save job." });
+    return Buffer.from(base64, "base64");
+  } catch {
+    return null;
   }
-});
+}
 
-// Get one job by ID
-app.get("/api/jobs/:id", (req, res) => {
-  const { id } = req.params;
-  const found = jobs.find((j) => j.id === id);
-  if (!found) {
-    return res.status(404).json({ error: "Job not found." });
-  }
-  res.json({ job: found });
-});
-
-// (Optional) Delete job
-app.delete("/api/jobs/:id", (req, res) => {
-  const { id } = req.params;
-  const before = jobs.length;
-  jobs = jobs.filter((j) => j.id !== id);
-  if (jobs.length === before) {
-    return res.status(404).json({ error: "Job not found." });
-  }
-  saveJobsToFile(jobs);
-  res.json({ success: true });
-});
-
-// =============================================
-// AI: FULL INSURANCE SUMMARY + SCOPE OF WORK
-// =============================================
+// ------------------------------
+// AI: Full Insurance Summary + Scope of Work inside it
+// ------------------------------
 app.post("/api/generate-summary", async (req, res) => {
   try {
     const job = req.body.job || {};
@@ -318,9 +230,9 @@ ${jobContext}
   }
 });
 
-// =============================================
-// AI: PSYCHROMETRIC ANALYSIS (short & focused)
-// =============================================
+// ------------------------------
+// AI: Psychrometric Analysis (short & focused)
+// ------------------------------
 app.post("/api/analyze-psychrometrics", async (req, res) => {
   try {
     const readings = req.body.readings || [];
@@ -357,9 +269,9 @@ ${JSON.stringify(readings, null, 2)}
   }
 });
 
-// =============================================
-// AI: SCOPE OF WORK ONLY
-// =============================================
+// ------------------------------
+// AI: Scope of Work Only
+// ------------------------------
 app.post("/api/generate-scope-only", async (req, res) => {
   try {
     const job = req.body.job || {};
@@ -395,9 +307,9 @@ ${jobContext}
   }
 });
 
-// =============================================
-// AI: HAZARD / SAFETY PLAN
-// =============================================
+// ------------------------------
+// AI: Hazard / Safety Plan
+// ------------------------------
 app.post("/api/generate-hazard-plan", async (req, res) => {
   try {
     const job = req.body.job || {};
@@ -405,16 +317,18 @@ app.post("/api/generate-hazard-plan", async (req, res) => {
     const jobContext = buildJobContext(job);
 
     const prompt = `
-You are a mitigation supervisor creating a concise HAZARD / SAFETY PLAN
-for a water mitigation project.
+You are a mitigation safety officer creating a concise HAZARD / SAFETY PLAN
+for a water / mold mitigation project.
 
 TASK:
-- Identify likely hazards (electrical, structural, microbial, slip/fall, etc.)
-- Recommend PPE and engineering controls
-- Mention containment, negative air, and clearance considerations
-- Keep it 3–5 short sections with bullets
+Return a short, practical hazard plan covering:
+- Site safety concerns (electrical, structural, microbial, slip/trip)
+- Required PPE for techs
+- Containment / negative air considerations
+- Special instructions for occupants (if any)
+- Any OSHA / IICRC-relevant notes
 
-Use neutral, professional language suitable for an internal safety document.
+Keep it 5–10 bullet points plus 1–2 short paragraphs max.
 
 JOB DATA:
 ${jobContext}
@@ -427,43 +341,41 @@ ${jobContext}
 
     const hazardText =
       response.choices?.[0]?.message?.content ||
-      "No hazard plan generated — check API settings.";
+      "No hazard plan generated.";
 
     res.json({ hazardPlan: hazardText });
   } catch (error) {
-    console.error("AI HAZARD PLAN ERROR:", error);
+    console.error("AI HAZARD ERROR:", error);
     res.status(500).json({ error: "AI hazard plan generation failed." });
   }
 });
 
-// =============================================
-// AI: ROOM PHOTO ANALYSIS
-// =============================================
+// ------------------------------
+// AI: Analyze Room Photo
+// ------------------------------
 app.post("/api/analyze-room-photo", async (req, res) => {
   try {
-    const { photoData, roomName, checklist } = req.body || {};
+    const { photoData, roomName, checklist = [] } = req.body || {};
     if (!photoData) {
-      return res.status(400).json({ error: "photoData is required." });
+      return res.status(400).json({ error: "Missing photoData" });
     }
 
     const openai = createOpenAI();
 
-    const textInstruction = `
-You are a mitigation supervisor reviewing a photo of the room "${
-      roomName || "Room"
-    }".
+    const promptText = `
+You are a mitigation supervisor reviewing a site photo from the job.
 
-From the image:
-- Describe visible damages (wet materials, demo, baseboards, flooring, wall cuts).
-- Mention containment, equipment (dehus, air movers, HEPA), and safety concerns if visible.
-- Use short, factual sentences in a paragraph.
+Room name: ${roomName || "Unknown Room"}
+Room checklist items already selected: ${checklist.join(", ") || "None"}
 
-Also consider this checklist (things the tech marked as done):
-${(checklist || []).join(", ") || "None"}
+TASK:
+Describe, in 3–6 sentences:
+- Visible damages (wet materials, staining, microbial growth if visible)
+- What mitigation appears to have been done (baseboards removed, drywall cuts, flooring removed, equipment present)
+- Any obvious safety concerns or special conditions.
 
-Blend the checklist with what you see in the photo so a supervisor can understand
-what was likely performed in the room.
-    `.trim();
+Write this as professional documentation that can be appended to a room narrative.
+`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -471,35 +383,34 @@ what was likely performed in the room.
         {
           role: "user",
           content: [
-            { type: "text", text: textInstruction },
+            { type: "text", text: promptText },
             {
               type: "image_url",
-              image_url: {
-                url: photoData, // data URL from the frontend
-              },
+              image_url: { url: photoData },
             },
           ],
         },
       ],
     });
 
-    const desc =
+    const description =
       response.choices?.[0]?.message?.content ||
-      "No AI description generated from photo.";
+      "No description generated.";
 
-    res.json({ description: desc });
+    res.json({ description });
   } catch (error) {
-    console.error("AI ROOM PHOTO ERROR:", error);
-    res.status(500).json({ error: "AI room photo analysis failed." });
+    console.error("AI PHOTO ERROR:", error);
+    res.status(500).json({ error: "Photo analysis failed." });
   }
 });
 
-// =============================================
+// ------------------------------
 // PDF GENERATION ENDPOINT
-// =============================================
+// ------------------------------
 app.post("/api/generate-pdf", async (req, res) => {
   try {
-    const { job, summary } = req.body || {};
+    const { job, summary, psychroAnalysis, scope, hazardPlan, dryLogChart, psychroChart } =
+      req.body || {};
     const {
       jobDetails = {},
       insured = {},
@@ -509,6 +420,9 @@ app.post("/api/generate-pdf", async (req, res) => {
       rooms = [],
       psychroReadings = [],
     } = job || {};
+
+    const dryChartBuf = decodeImage(dryLogChart);
+    const psychroChartBuf = decodeImage(psychroChart);
 
     const doc = new PDFDocument({ margin: 40 });
     const chunks = [];
@@ -526,7 +440,7 @@ app.post("/api/generate-pdf", async (req, res) => {
       res.send(pdfBuffer);
     });
 
-    // Header
+    // ---- COVER / HEADER ----
     doc.fontSize(18).text("Mitigation Report", { align: "center" });
     doc.moveDown(0.5);
     doc
@@ -538,7 +452,6 @@ app.post("/api/generate-pdf", async (req, res) => {
         { align: "center" }
       );
     doc.moveDown();
-
     doc
       .fontSize(12)
       .text(
@@ -632,7 +545,7 @@ app.post("/api/generate-pdf", async (req, res) => {
       });
     }
 
-    // Psychrometrics (summary table-style)
+    // Psychrometric overview (concise text)
     if (psychroReadings && psychroReadings.length > 0) {
       doc
         .fontSize(14)
@@ -651,7 +564,74 @@ app.post("/api/generate-pdf", async (req, res) => {
       doc.moveDown();
     }
 
-    // AI Narrative
+    // Optional: AI psychro analysis
+    if (psychroAnalysis) {
+      doc.fontSize(14).text("AI Psychrometric Analysis", {
+        underline: true,
+      });
+      doc.moveDown(0.5);
+      doc.fontSize(11).text(psychroAnalysis, { align: "left" });
+      doc.moveDown();
+    }
+
+    // Page with charts (if provided)
+    if (dryChartBuf || psychroChartBuf) {
+      doc.addPage();
+      doc.fontSize(16).text("Drying Trend Charts", {
+        underline: true,
+        align: "center",
+      });
+      doc.moveDown();
+
+      if (dryChartBuf) {
+        doc.fontSize(13).text("Dry Log Moisture Trend", { align: "left" });
+        doc.moveDown(0.3);
+        doc.image(dryChartBuf, {
+          fit: [500, 260],
+          align: "center",
+          valign: "center",
+        });
+        doc.moveDown();
+      }
+
+      if (psychroChartBuf) {
+        doc.moveDown(0.5);
+        doc.fontSize(13).text("Psychrometric GPP Trend", {
+          align: "left",
+        });
+        doc.moveDown(0.3);
+        doc.image(psychroChartBuf, {
+          fit: [500, 260],
+          align: "center",
+          valign: "center",
+        });
+        doc.moveDown();
+      }
+    }
+
+    // AI Scope (if provided)
+    if (scope) {
+      doc.addPage();
+      doc.fontSize(16).text("Scope of Work", {
+        underline: true,
+        align: "center",
+      });
+      doc.moveDown();
+      doc.fontSize(11).text(scope, { align: "left" });
+    }
+
+    // Hazard Plan (if provided)
+    if (hazardPlan) {
+      doc.addPage();
+      doc.fontSize(16).text("Hazard / Safety Plan", {
+        underline: true,
+        align: "center",
+      });
+      doc.moveDown();
+      doc.fontSize(11).text(hazardPlan, { align: "left" });
+    }
+
+    // AI narrative (full summary)
     if (summary) {
       doc.addPage();
       doc.fontSize(16).text("AI Mitigation Narrative", {
@@ -659,7 +639,9 @@ app.post("/api/generate-pdf", async (req, res) => {
         align: "center",
       });
       doc.moveDown();
-      doc.fontSize(11).text(summary, { align: "left" });
+      doc.fontSize(11).text(summary, {
+        align: "left",
+      });
     }
 
     doc.end();
