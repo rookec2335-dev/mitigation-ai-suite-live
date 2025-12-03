@@ -8,11 +8,96 @@ const API_BASE =
 
 function App() {
   /* =============================================
-     JOB HISTORY (Backend)
+     LOAD / SAVE JOBS (LocalStorage) + HISTORY
   ============================================= */
   const [savedJobs, setSavedJobs] = useState([]);
   const [jobName, setJobName] = useState("");
+  const [historySearch, setHistorySearch] = useState("");
 
+  useEffect(() => {
+    const jobs = JSON.parse(localStorage.getItem("mitigationJobs")) || [];
+    setSavedJobs(jobs);
+  }, []);
+
+  const buildJobPayload = () => ({
+    jobDetails,
+    insured,
+    insurance,
+    inspection,
+    techHours,
+    rooms,
+    psychroReadings,
+  });
+
+  const saveJob = () => {
+    if (!jobName) return alert("Enter a job name!");
+
+    const payload = buildJobPayload();
+
+    const newJob = {
+      jobName,
+      timestamp: new Date().toISOString(),
+      ...payload,
+    };
+
+    const updated = [...savedJobs, newJob];
+    localStorage.setItem("mitigationJobs", JSON.stringify(updated));
+    setSavedJobs(updated);
+    alert("Job Saved!");
+  };
+
+  const loadJob = (job) => {
+    setJobDetails(job.jobDetails || jobDetails);
+    setInsured(job.insured || insured);
+    setInsurance(job.insurance || insurance);
+    setInspection(job.inspection || inspection);
+    setTechHours(job.techHours || techHours);
+    setRooms(job.rooms || rooms);
+    setPsychroReadings(job.psychroReadings || psychroReadings);
+    alert("Job Loaded!");
+  };
+
+  const deleteJob = (idx) => {
+    const job = savedJobs[idx];
+    const name = job?.jobName || "this job";
+    if (!window.confirm(`Delete "${name}" from history?`)) return;
+
+    const updated = savedJobs.filter((_, i) => i !== idx);
+    setSavedJobs(updated);
+    localStorage.setItem("mitigationJobs", JSON.stringify(updated));
+  };
+
+  const filteredJobs = savedJobs.filter((j) => {
+    if (!historySearch.trim()) return true;
+    const jd = j.jobDetails || {};
+    const ins = j.insured || {};
+    const haystack = `${j.jobName || ""} ${ins.name || ""} ${
+      jd.jobNumber || ""
+    } ${jd.lossType || ""}`.toLowerCase();
+    return haystack.includes(historySearch.toLowerCase());
+  });
+
+  const formatJobRow = (job) => {
+    const jd = job.jobDetails || {};
+    const ins = job.insured || {};
+    const name = job.jobName || "No Job Name";
+    const insuredName = ins.name || "No Insured Name";
+    const jobNum = jd.jobNumber ? `Job #${jd.jobNumber}` : "No Job #";
+    const loss = jd.lossType || "Loss type N/A";
+    const when = job.timestamp
+      ? new Date(job.timestamp).toLocaleString("en-US")
+      : "Unknown date";
+
+    return {
+      title: `${name}`,
+      subtitle: `${insuredName} • ${jobNum} • ${loss}`,
+      meta: `${when}`,
+    };
+  };
+
+  /* =============================================
+     MAIN STATE
+  ============================================= */
   const [jobDetails, setJobDetails] = useState({
     companyName: "",
     jobNumber: "",
@@ -85,7 +170,10 @@ function App() {
   ]);
 
   const addTechHour = () =>
-    setTechHours((prev) => [...prev, { date: "", in: "", out: "", notes: "" }]);
+    setTechHours((prev) => [
+      ...prev,
+      { date: "", in: "", out: "", notes: "" },
+    ]);
 
   const updateTechHour = (idx, field, value) => {
     setTechHours((prev) => {
@@ -219,107 +307,6 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   /* =============================================
-     JOB PAYLOAD BUILDER
-  ============================================= */
-  const buildJobPayload = () => ({
-    jobDetails,
-    insured,
-    insurance,
-    inspection,
-    techHours,
-    rooms,
-    psychroReadings,
-  });
-
-  /* =============================================
-     BACKEND JOB HISTORY CALLS
-  ============================================= */
-
-  // Load list of saved jobs from backend on mount
-  useEffect(() => {
-    const fetchJobs = async () => {
-      try {
-        const res = await axios.get(`${API_BASE}/api/jobs`);
-        setSavedJobs(res.data.jobs || []);
-      } catch (err) {
-        console.error("Error loading jobs list:", err);
-      }
-    };
-    fetchJobs();
-  }, []);
-
-  const saveJob = async () => {
-    if (!jobName) {
-      alert("Enter a job name!");
-      return;
-    }
-    try {
-      const payload = buildJobPayload();
-      await axios.post(`${API_BASE}/api/jobs`, {
-        jobName,
-        job: payload,
-      });
-      alert("Job Saved!");
-      setJobName("");
-
-      // Refresh job list
-      const res = await axios.get(`${API_BASE}/api/jobs`);
-      setSavedJobs(res.data.jobs || []);
-    } catch (err) {
-      console.error("Save job failed:", err);
-      alert("Saving job failed. Check backend.");
-    }
-  };
-
-  const loadJob = async (id) => {
-    try {
-      const res = await axios.get(`${API_BASE}/api/jobs/${id}`);
-      const fullJob = res.data.job;
-      if (!fullJob || !fullJob.job) {
-        alert("Job data missing on server.");
-        return;
-      }
-      const {
-        jobDetails: jd,
-        insured: insd,
-        insurance: insInfo,
-        inspection: insp,
-        techHours: th,
-        rooms: rms,
-        psychroReadings: pr,
-      } = fullJob.job;
-
-      setJobDetails(jd || {});
-      setInsured(insd || {});
-      setInsurance(insInfo || {});
-      setInspection(insp || { inspector: "", inspectionDate: "", observations: "", checklist: [] });
-      setTechHours(th && th.length ? th : [{ date: "", in: "", out: "", notes: "" }]);
-      setRooms(
-        rms && rms.length
-          ? rms
-          : [
-              {
-                name: "",
-                narrative: "",
-                dryLogs: [],
-                photo: null,
-                photoData: "",
-                checklist: [],
-              },
-            ]
-      );
-      setPsychroReadings(
-        pr && pr.length ? pr : [{ date: "", time: "", temp: "", rh: "", gpp: "" }]
-      );
-
-      alert("Job Loaded!");
-    } catch (err) {
-      console.error("Load job failed:", err);
-      alert("Failed to load job.");
-    }
-  };
-
-  /* =============================================
      AI CALLS
   ============================================= */
   const handleGenerateSummary = async () => {
@@ -391,8 +378,7 @@ function App() {
   const handleAnalyzeRoomPhoto = async (idx) => {
     const room = rooms[idx];
     if (!room.photoData) {
-      alert("Upload a photo for this room first.");
-      return;
+      return alert("Upload a photo for this room first.");
     }
     try {
       setLoading(true);
@@ -402,6 +388,7 @@ function App() {
         checklist: room.checklist || [],
       });
       const desc = res.data.description || "No description generated.";
+      // Append to room narrative
       setRooms((prev) => {
         const updated = [...prev];
         const current = updated[idx].narrative || "";
@@ -485,548 +472,602 @@ function App() {
         </div>
       </header>
 
-      {/* SAVED JOBS (HISTORY) */}
-      {savedJobs.length > 0 && (
-        <section className="card">
+      {/* SAVED JOBS (FULL WIDTH) */}
+      <section className="card full-width">
+        <div className="saved-jobs-header">
           <h2>Saved Jobs</h2>
+          <input
+            className="saved-jobs-search"
+            placeholder="Search jobs / insured / job # / loss type"
+            value={historySearch}
+            onChange={(e) => setHistorySearch(e.target.value)}
+          />
+        </div>
+        {filteredJobs.length === 0 ? (
+          <p className="muted">No saved jobs yet. Save one to build history.</p>
+        ) : (
           <div className="saved-jobs-list">
-            {savedJobs.map((j) => (
-              <button
-                key={j.id}
-                className="saved-job-btn"
-                onClick={() => loadJob(j.id)}
-              >
-                {j.jobName} –{" "}
-                {j.jobNumber ? `Job #${j.jobNumber} – ` : ""}
-                {j.insuredName || "No Insured Name"} –{" "}
-                {new Date(j.timestamp).toLocaleString("en-US")}
-              </button>
-            ))}
+            {filteredJobs.map((j, i) => {
+              const meta = formatJobRow(j);
+              return (
+                <div key={i} className="saved-job-row">
+                  <button
+                    className="saved-job-main"
+                    onClick={() => loadJob(j)}
+                  >
+                    <span className="saved-job-title">{meta.title}</span>
+                    <span className="saved-job-subtitle">{meta.subtitle}</span>
+                    <span className="saved-job-meta">{meta.meta}</span>
+                  </button>
+                  <button
+                    className="saved-job-delete"
+                    onClick={() => deleteJob(i)}
+                    title="Delete saved job"
+                  >
+                    ✕
+                  </button>
+                </div>
+              );
+            })}
           </div>
-        </section>
-      )}
+        )}
+      </section>
 
-      {/* INITIAL INSPECTION */}
-      <section className="card">
-        <h2>Initial Inspection</h2>
-        <div className="grid-3">
-          <input
-            placeholder="Inspector Name"
-            value={inspection.inspector}
-            onChange={(e) =>
-              setInspection({ ...inspection, inspector: e.target.value })
-            }
-          />
-          <input
-            type="date"
-            value={inspection.inspectionDate}
-            onChange={(e) =>
-              setInspection({
-                ...inspection,
-                inspectionDate: e.target.value,
-              })
-            }
-          />
-          <select
-            value={jobDetails.lossType}
-            onChange={(e) =>
-              setJobDetails({ ...jobDetails, lossType: e.target.value })
-            }
-          >
-            <option value="">Loss Type</option>
-            <option value="Clean Water (Cat 1)">Clean Water (Cat 1)</option>
-            <option value="Grey Water (Cat 2)">Grey Water (Cat 2)</option>
-            <option value="Black Water (Cat 3)">Black Water (Cat 3)</option>
-            <option value="Storm">Storm</option>
-            <option value="Flood">Flood</option>
-            <option value="Sewage Backup">Sewage Backup</option>
-          </select>
-        </div>
-        <textarea
-          placeholder="Observations / Scope of Work"
-          value={inspection.observations}
-          onChange={(e) =>
-            setInspection({ ...inspection, observations: e.target.value })
-          }
-        />
-        <div className="checklist-grid">
-          {inspectionChecklistItems.map((item) => (
-            <label key={item}>
+      {/* MAIN CONTENT: TWO COLUMNS */}
+      <div className="two-column-layout">
+        {/* LEFT COLUMN */}
+        <div className="column column-left">
+          {/* INSURED / PROPERTY */}
+          <section className="card">
+            <h2>Insured / Property</h2>
+            <div className="grid-3">
               <input
-                type="checkbox"
-                checked={inspection.checklist.includes(item)}
-                onChange={() => toggleInspectionItem(item)}
+                placeholder="Insured Name"
+                value={insured.name}
+                onChange={(e) =>
+                  setInsured({ ...insured, name: e.target.value })
+                }
               />
-              {item}
-            </label>
-          ))}
-        </div>
-      </section>
+              <input
+                placeholder="Phone"
+                value={insured.phone}
+                onChange={(e) =>
+                  setInsured({ ...insured, phone: e.target.value })
+                }
+              />
+              <input
+                placeholder="Email"
+                value={insured.email}
+                onChange={(e) =>
+                  setInsured({ ...insured, email: e.target.value })
+                }
+              />
+            </div>
+            <div className="grid-3">
+              <input
+                placeholder="Address"
+                value={insured.address}
+                onChange={(e) =>
+                  setInsured({ ...insured, address: e.target.value })
+                }
+              />
+              <input
+                placeholder="City"
+                value={insured.city}
+                onChange={(e) =>
+                  setInsured({ ...insured, city: e.target.value })
+                }
+              />
+              <input
+                placeholder="State"
+                value={insured.state}
+                onChange={(e) =>
+                  setInsured({ ...insured, state: e.target.value })
+                }
+              />
+            </div>
+            <div className="grid-3">
+              <input
+                placeholder="ZIP"
+                value={insured.zip}
+                onChange={(e) =>
+                  setInsured({ ...insured, zip: e.target.value })
+                }
+              />
+            </div>
+          </section>
 
-      {/* JOB & LOSS DETAILS */}
-      <section className="card">
-        <h2>Job & Loss Details</h2>
-        <div className="grid-3">
-          <input
-            placeholder="Company Name"
-            value={jobDetails.companyName}
-            onChange={(e) =>
-              setJobDetails({ ...jobDetails, companyName: e.target.value })
-            }
-          />
-          <input
-            placeholder="Job #"
-            value={jobDetails.jobNumber}
-            onChange={(e) =>
-              setJobDetails({ ...jobDetails, jobNumber: e.target.value })
-            }
-          />
-          <select
-            value={jobDetails.priority}
-            onChange={(e) =>
-              setJobDetails({ ...jobDetails, priority: e.target.value })
-            }
-          >
-            <option value="Standard">Priority: Standard</option>
-            <option value="Emergency">Priority: Emergency</option>
-            <option value="After Hours">Priority: After Hours</option>
-            <option value="High">Priority: High</option>
-          </select>
-        </div>
-        <div className="grid-3">
-          <input
-            placeholder="Technician"
-            value={jobDetails.technician}
-            onChange={(e) =>
-              setJobDetails({ ...jobDetails, technician: e.target.value })
-            }
-          />
-          <input
-            placeholder="Supervisor"
-            value={jobDetails.supervisor}
-            onChange={(e) =>
-              setJobDetails({ ...jobDetails, supervisor: e.target.value })
-            }
-          />
-          <select
-            value={jobDetails.iicrcClass}
-            onChange={(e) =>
-              setJobDetails({ ...jobDetails, iicrcClass: e.target.value })
-            }
-          >
-            <option value="">IICRC Class</option>
-            <option value="Class 1">Class 1 – Small amount of wet materials</option>
-            <option value="Class 2">Class 2 – Significant area affected</option>
-            <option value="Class 3">Class 3 – Walls / Insulation soaked</option>
-            <option value="Class 4">
-              Class 4 – Specialty drying (wood, plaster)
-            </option>
-          </select>
-        </div>
-        <div className="grid-3">
-          <input
-            type="date"
-            value={jobDetails.dateOfLoss}
-            onChange={(e) =>
-              setJobDetails({ ...jobDetails, dateOfLoss: e.target.value })
-            }
-          />
-          <input
-            type="date"
-            value={jobDetails.inspectionDate}
-            onChange={(e) =>
-              setJobDetails({
-                ...jobDetails,
-                inspectionDate: e.target.value,
-              })
-            }
-          />
-          <input
-            placeholder="Source of Loss"
-            value={jobDetails.sourceOfLoss}
-            onChange={(e) =>
-              setJobDetails({
-                ...jobDetails,
-                sourceOfLoss: e.target.value,
-              })
-            }
-          />
-        </div>
-      </section>
+          {/* INSURANCE & BILLING */}
+          <section className="card">
+            <h2>Insurance & Billing</h2>
+            <div className="grid-3">
+              <input
+                placeholder="Carrier"
+                value={insurance.carrier}
+                onChange={(e) =>
+                  setInsurance({ ...insurance, carrier: e.target.value })
+                }
+              />
+              <input
+                placeholder="Policy #"
+                value={insurance.policyNumber}
+                onChange={(e) =>
+                  setInsurance({
+                    ...insurance,
+                    policyNumber: e.target.value,
+                  })
+                }
+              />
+              <input
+                placeholder="Claim #"
+                value={insurance.claimNumber}
+                onChange={(e) =>
+                  setInsurance({
+                    ...insurance,
+                    claimNumber: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className="grid-3">
+              <input
+                placeholder="Deductible"
+                value={insurance.deductible}
+                onChange={(e) =>
+                  setInsurance({
+                    ...insurance,
+                    deductible: e.target.value,
+                  })
+                }
+              />
+              <input
+                placeholder="Adjuster Name"
+                value={insurance.adjusterName}
+                onChange={(e) =>
+                  setInsurance({
+                    ...insurance,
+                    adjusterName: e.target.value,
+                  })
+                }
+              />
+              <input
+                placeholder="Adjuster Phone"
+                value={insurance.adjusterPhone}
+                onChange={(e) =>
+                  setInsurance({
+                    ...insurance,
+                    adjusterPhone: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className="grid-3">
+              <input
+                placeholder="Adjuster Email"
+                value={insurance.adjusterEmail}
+                onChange={(e) =>
+                  setInsurance({
+                    ...insurance,
+                    adjusterEmail: e.target.value,
+                  })
+                }
+              />
+              <input
+                placeholder="Billing Status"
+                value={insurance.billingStatus}
+                onChange={(e) =>
+                  setInsurance({
+                    ...insurance,
+                    billingStatus: e.target.value,
+                  })
+                }
+              />
+            </div>
+          </section>
 
-      {/* INSURED / PROPERTY */}
-      <section className="card">
-        <h2>Insured / Property</h2>
-        <div className="grid-3">
-          <input
-            placeholder="Insured Name"
-            value={insured.name}
-            onChange={(e) =>
-              setInsured({ ...insured, name: e.target.value })
-            }
-          />
-          <input
-            placeholder="Phone"
-            value={insured.phone}
-            onChange={(e) =>
-              setInsured({ ...insured, phone: e.target.value })
-            }
-          />
-          <input
-            placeholder="Email"
-            value={insured.email}
-            onChange={(e) =>
-              setInsured({ ...insured, email: e.target.value })
-            }
-          />
-        </div>
-        <div className="grid-3">
-          <input
-            placeholder="Address"
-            value={insured.address}
-            onChange={(e) =>
-              setInsured({ ...insured, address: e.target.value })
-            }
-          />
-          <input
-            placeholder="City"
-            value={insured.city}
-            onChange={(e) =>
-              setInsured({ ...insured, city: e.target.value })
-            }
-          />
-          <input
-            placeholder="State"
-            value={insured.state}
-            onChange={(e) =>
-              setInsured({ ...insured, state: e.target.value })
-            }
-          />
-        </div>
-        <div className="grid-3">
-          <input
-            placeholder="ZIP"
-            value={insured.zip}
-            onChange={(e) =>
-              setInsured({ ...insured, zip: e.target.value })
-            }
-          />
-        </div>
-      </section>
-
-      {/* INSURANCE & BILLING */}
-      <section className="card">
-        <h2>Insurance & Billing</h2>
-        <div className="grid-3">
-          <input
-            placeholder="Carrier"
-            value={insurance.carrier}
-            onChange={(e) =>
-              setInsurance({ ...insurance, carrier: e.target.value })
-            }
-          />
-          <input
-            placeholder="Policy #"
-            value={insurance.policyNumber}
-            onChange={(e) =>
-              setInsurance({
-                ...insurance,
-                policyNumber: e.target.value,
-              })
-            }
-          />
-          <input
-            placeholder="Claim #"
-            value={insurance.claimNumber}
-            onChange={(e) =>
-              setInsurance({
-                ...insurance,
-                claimNumber: e.target.value,
-              })
-            }
-          />
-        </div>
-        <div className="grid-3">
-          <input
-            placeholder="Deductible"
-            value={insurance.deductible}
-            onChange={(e) =>
-              setInsurance({
-                ...insurance,
-                deductible: e.target.value,
-              })
-            }
-          />
-          <input
-            placeholder="Adjuster Name"
-            value={insurance.adjusterName}
-            onChange={(e) =>
-              setInsurance({
-                ...insurance,
-                adjusterName: e.target.value,
-              })
-            }
-          />
-          <input
-            placeholder="Adjuster Phone"
-            value={insurance.adjusterPhone}
-            onChange={(e) =>
-              setInsurance({
-                ...insurance,
-                adjusterPhone: e.target.value,
-              })
-            }
-          />
-        </div>
-        <div className="grid-3">
-          <input
-            placeholder="Adjuster Email"
-            value={insurance.adjusterEmail}
-            onChange={(e) =>
-              setInsurance({
-                ...insurance,
-                adjusterEmail: e.target.value,
-              })
-            }
-          />
-          <input
-            placeholder="Billing Status"
-            value={insurance.billingStatus}
-            onChange={(e) =>
-              setInsurance({
-                ...insurance,
-                billingStatus: e.target.value,
-              })
-            }
-          />
-        </div>
-      </section>
-
-      {/* TECH HOURS */}
-      <section className="card">
-        <h2>Tech Hours</h2>
-        {techHours.map((entry, idx) => (
-          <div className="grid-4" key={idx}>
-            <input
-              type="date"
-              value={entry.date}
-              onChange={(e) => updateTechHour(idx, "date", e.target.value)}
-            />
-            <input
-              type="time"
-              value={entry.in}
-              onChange={(e) => updateTechHour(idx, "in", e.target.value)}
-            />
-            <input
-              type="time"
-              value={entry.out}
-              onChange={(e) => updateTechHour(idx, "out", e.target.value)}
-            />
-            <input
-              placeholder="Notes"
-              value={entry.notes}
-              onChange={(e) => updateTechHour(idx, "notes", e.target.value)}
-            />
-          </div>
-        ))}
-        <button className="btn" onClick={addTechHour}>
-          + Add Entry
-        </button>
-      </section>
-
-      {/* ROOMS & DRY LOGS */}
-      <section className="card">
-        <h2>Rooms & Dry Logs</h2>
-        {rooms.map((room, idx) => (
-          <div key={idx} className="room-box">
-            <input
-              placeholder="Room Name"
-              value={room.name}
-              onChange={(e) => updateRoom(idx, "name", e.target.value)}
-            />
+          {/* INITIAL INSPECTION */}
+          <section className="card">
+            <h2>Initial Inspection</h2>
+            <div className="grid-3">
+              <input
+                placeholder="Inspector Name"
+                value={inspection.inspector}
+                onChange={(e) =>
+                  setInspection({ ...inspection, inspector: e.target.value })
+                }
+              />
+              <input
+                type="date"
+                value={inspection.inspectionDate}
+                onChange={(e) =>
+                  setInspection({
+                    ...inspection,
+                    inspectionDate: e.target.value,
+                  })
+                }
+              />
+              <select
+                value={jobDetails.lossType}
+                onChange={(e) =>
+                  setJobDetails({ ...jobDetails, lossType: e.target.value })
+                }
+              >
+                <option value="">Loss Type</option>
+                <option value="Clean Water (Cat 1)">Clean Water (Cat 1)</option>
+                <option value="Grey Water (Cat 2)">Grey Water (Cat 2)</option>
+                <option value="Black Water (Cat 3)">Black Water (Cat 3)</option>
+                <option value="Storm">Storm</option>
+                <option value="Flood">Flood</option>
+                <option value="Sewage Backup">Sewage Backup</option>
+              </select>
+            </div>
             <textarea
-              placeholder="Work Done / Narrative"
-              value={room.narrative}
+              placeholder="Observations / Scope of Work"
+              value={inspection.observations}
               onChange={(e) =>
-                updateRoom(idx, "narrative", e.target.value)
+                setInspection({ ...inspection, observations: e.target.value })
               }
             />
-            <h4>Checklist</h4>
             <div className="checklist-grid">
-              {roomChecklistItems.map((item) => (
+              {inspectionChecklistItems.map((item) => (
                 <label key={item}>
                   <input
                     type="checkbox"
-                    checked={room.checklist?.includes(item)}
-                    onChange={() => toggleRoomChecklist(idx, item)}
+                    checked={inspection.checklist.includes(item)}
+                    onChange={() => toggleInspectionItem(item)}
                   />
                   {item}
                 </label>
               ))}
             </div>
+          </section>
 
-            <button className="btn" onClick={() => addDryLog(idx)}>
-              + Add Dry Log
-            </button>
-            {room.dryLogs?.map((log, i) => (
-              <div key={i} className="grid-3">
+          {/* JOB & LOSS DETAILS */}
+          <section className="card">
+            <h2>Job & Loss Details</h2>
+            <div className="grid-3">
+              <input
+                placeholder="Company Name"
+                value={jobDetails.companyName}
+                onChange={(e) =>
+                  setJobDetails({ ...jobDetails, companyName: e.target.value })
+                }
+              />
+              <input
+                placeholder="Job #"
+                value={jobDetails.jobNumber}
+                onChange={(e) =>
+                  setJobDetails({ ...jobDetails, jobNumber: e.target.value })
+                }
+              />
+              <select
+                value={jobDetails.priority}
+                onChange={(e) =>
+                  setJobDetails({ ...jobDetails, priority: e.target.value })
+                }
+              >
+                <option value="Standard">Priority: Standard</option>
+                <option value="Emergency">Priority: Emergency</option>
+                <option value="After Hours">Priority: After Hours</option>
+                <option value="High">Priority: High</option>
+              </select>
+            </div>
+            <div className="grid-3">
+              <input
+                placeholder="Technician"
+                value={jobDetails.technician}
+                onChange={(e) =>
+                  setJobDetails({ ...jobDetails, technician: e.target.value })
+                }
+              />
+              <input
+                placeholder="Supervisor"
+                value={jobDetails.supervisor}
+                onChange={(e) =>
+                  setJobDetails({ ...jobDetails, supervisor: e.target.value })
+                }
+              />
+              <select
+                value={jobDetails.iicrcClass}
+                onChange={(e) =>
+                  setJobDetails({ ...jobDetails, iicrcClass: e.target.value })
+                }
+              >
+                <option value="">IICRC Class</option>
+                <option value="Class 1">
+                  Class 1 – Small amount of wet materials
+                </option>
+                <option value="Class 2">
+                  Class 2 – Significant area affected
+                </option>
+                <option value="Class 3">
+                  Class 3 – Walls / Insulation soaked
+                </option>
+                <option value="Class 4">
+                  Class 4 – Specialty drying (wood, plaster)
+                </option>
+              </select>
+            </div>
+            <div className="grid-3">
+              <input
+                type="date"
+                value={jobDetails.dateOfLoss}
+                onChange={(e) =>
+                  setJobDetails({ ...jobDetails, dateOfLoss: e.target.value })
+                }
+              />
+              <input
+                type="date"
+                value={jobDetails.inspectionDate}
+                onChange={(e) =>
+                  setJobDetails({
+                    ...jobDetails,
+                    inspectionDate: e.target.value,
+                  })
+                }
+              />
+              <input
+                placeholder="Source of Loss"
+                value={jobDetails.sourceOfLoss}
+                onChange={(e) =>
+                  setJobDetails({
+                    ...jobDetails,
+                    sourceOfLoss: e.target.value,
+                  })
+                }
+              />
+            </div>
+          </section>
+        </div>
+
+        {/* RIGHT COLUMN */}
+        <div className="column column-right">
+          {/* TECH HOURS */}
+          <section className="card">
+            <h2>Tech Hours</h2>
+            {techHours.map((entry, idx) => (
+              <div className="grid-4" key={idx}>
                 <input
                   type="date"
-                  value={log.date}
+                  value={entry.date}
                   onChange={(e) =>
-                    updateDryLog(idx, i, "date", e.target.value)
+                    updateTechHour(idx, "date", e.target.value)
                   }
                 />
                 <input
                   type="time"
-                  value={log.time}
+                  value={entry.in}
                   onChange={(e) =>
-                    updateDryLog(idx, i, "time", e.target.value)
+                    updateTechHour(idx, "in", e.target.value)
                   }
                 />
                 <input
-                  placeholder="Moisture Reading"
-                  value={log.reading}
+                  type="time"
+                  value={entry.out}
                   onChange={(e) =>
-                    updateDryLog(idx, i, "reading", e.target.value)
+                    updateTechHour(idx, "out", e.target.value)
+                  }
+                />
+                <input
+                  placeholder="Notes"
+                  value={entry.notes}
+                  onChange={(e) =>
+                    updateTechHour(idx, "notes", e.target.value)
                   }
                 />
               </div>
             ))}
+            <button className="btn" onClick={addTechHour}>
+              + Add Entry
+            </button>
+          </section>
 
-            <div className="room-photo-row">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handlePhotoUpload(idx, e)}
-              />
-              {room.photo && (
-                <img
-                  src={room.photo}
-                  className="room-photo"
-                  alt="Room"
+          {/* ROOMS & DRY LOGS */}
+          <section className="card">
+            <h2>Rooms & Dry Logs</h2>
+            {rooms.map((room, idx) => (
+              <div key={idx} className="room-box">
+                <input
+                  placeholder="Room Name"
+                  value={room.name}
+                  onChange={(e) =>
+                    updateRoom(idx, "name", e.target.value)
+                  }
                 />
-              )}
+                <textarea
+                  placeholder="Work Done / Narrative"
+                  value={room.narrative}
+                  onChange={(e) =>
+                    updateRoom(idx, "narrative", e.target.value)
+                  }
+                />
+                <h4>Checklist</h4>
+                <div className="checklist-grid">
+                  {roomChecklistItems.map((item) => (
+                    <label key={item}>
+                      <input
+                        type="checkbox"
+                        checked={room.checklist?.includes(item)}
+                        onChange={() => toggleRoomChecklist(idx, item)}
+                      />
+                      {item}
+                    </label>
+                  ))}
+                </div>
+
+                <button
+                  className="btn"
+                  onClick={() => addDryLog(idx)}
+                >
+                  + Add Dry Log
+                </button>
+                {room.dryLogs?.map((log, i) => (
+                  <div key={i} className="grid-3">
+                    <input
+                      type="date"
+                      value={log.date}
+                      onChange={(e) =>
+                        updateDryLog(idx, i, "date", e.target.value)
+                      }
+                    />
+                    <input
+                      type="time"
+                      value={log.time}
+                      onChange={(e) =>
+                        updateDryLog(idx, i, "time", e.target.value)
+                      }
+                    />
+                    <input
+                      placeholder="Moisture Reading"
+                      value={log.reading}
+                      onChange={(e) =>
+                        updateDryLog(idx, i, "reading", e.target.value)
+                      }
+                    />
+                  </div>
+                ))}
+
+                <div className="room-photo-row">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handlePhotoUpload(idx, e)}
+                  />
+                  {room.photo && (
+                    <img
+                      src={room.photo}
+                      className="room-photo"
+                      alt="Room"
+                    />
+                  )}
+                </div>
+
+                <button
+                  className="btn"
+                  onClick={() => handleAnalyzeRoomPhoto(idx)}
+                >
+                  AI Describe From Photo
+                </button>
+              </div>
+            ))}
+            <button className="btn" onClick={addRoom}>
+              + Add Room
+            </button>
+          </section>
+
+          {/* PSYCHROMETRIC READINGS */}
+          <section className="card">
+            <h2>Psychrometric Readings</h2>
+            {psychroReadings.map((row, idx) => (
+              <div key={idx} className="grid-5">
+                <input
+                  type="date"
+                  value={row.date}
+                  onChange={(e) =>
+                    updateReading(idx, "date", e.target.value)
+                  }
+                />
+                <input
+                  type="time"
+                  value={row.time}
+                  onChange={(e) =>
+                    updateReading(idx, "time", e.target.value)
+                  }
+                />
+                <input
+                  placeholder="Temp (°F)"
+                  value={row.temp}
+                  onChange={(e) =>
+                    updateReading(idx, "temp", e.target.value)
+                  }
+                />
+                <input
+                  placeholder="RH (%)"
+                  value={row.rh}
+                  onChange={(e) =>
+                    updateReading(idx, "rh", e.target.value)
+                  }
+                />
+                <input
+                  placeholder="GPP"
+                  value={row.gpp}
+                  onChange={(e) =>
+                    updateReading(idx, "gpp", e.target.value)
+                  }
+                />
+              </div>
+            ))}
+            <button className="btn" onClick={addReading}>
+              + Add Reading
+            </button>
+            <button
+              className="btn secondary"
+              onClick={handleAnalyzePsychro}
+            >
+              Analyze Psychrometrics (AI)
+            </button>
+            {psychroAnalysis && (
+              <div className="ai-section">
+                <h3>AI Psychrometric Analysis</h3>
+                <p>{psychroAnalysis}</p>
+              </div>
+            )}
+          </section>
+
+          {/* AI OUTPUTS */}
+          <section className="card">
+            <h2>AI Outputs</h2>
+
+            <div className="ai-button-row">
+              <button
+                className="btn btn-primary"
+                onClick={handleGenerateSummary}
+              >
+                Generate AI Insurance Summary
+              </button>
+              <button
+                className="btn"
+                onClick={handleGenerateScope}
+              >
+                Generate Scope of Work
+              </button>
+              <button
+                className="btn"
+                onClick={handleGenerateHazardPlan}
+              >
+                Generate Hazard / Safety Plan
+              </button>
             </div>
 
-            <button
-              className="btn"
-              onClick={() => handleAnalyzeRoomPhoto(idx)}
-            >
-              AI Describe From Photo
-            </button>
-          </div>
-        ))}
-        <button className="btn" onClick={addRoom}>
-          + Add Room
-        </button>
-      </section>
+            {loading && (
+              <p className="loading-text">
+                AI is thinking like a mitigation supervisor…
+              </p>
+            )}
 
-      {/* PSYCHROMETRIC READINGS */}
-      <section className="card">
-        <h2>Psychrometric Readings</h2>
-        {psychroReadings.map((row, idx) => (
-          <div key={idx} className="grid-5">
-            <input
-              type="date"
-              value={row.date}
-              onChange={(e) =>
-                updateReading(idx, "date", e.target.value)
-              }
-            />
-            <input
-              type="time"
-              value={row.time}
-              onChange={(e) =>
-                updateReading(idx, "time", e.target.value)
-              }
-            />
-            <input
-              placeholder="Temp (°F)"
-              value={row.temp}
-              onChange={(e) =>
-                updateReading(idx, "temp", e.target.value)
-              }
-            />
-            <input
-              placeholder="RH (%)"
-              value={row.rh}
-              onChange={(e) =>
-                updateReading(idx, "rh", e.target.value)
-              }
-            />
-            <input
-              placeholder="GPP"
-              value={row.gpp}
-              onChange={(e) =>
-                updateReading(idx, "gpp", e.target.value)
-              }
-            />
-          </div>
-        ))}
-        <button className="btn" onClick={addReading}>
-          + Add Reading
-        </button>
-        <button
-          className="btn secondary"
-          onClick={handleAnalyzePsychro}
-        >
-          Analyze Psychrometrics (AI)
-        </button>
-        {psychroAnalysis && (
-          <div className="ai-section">
-            <h3>AI Psychrometric Analysis</h3>
-            <p>{psychroAnalysis}</p>
-          </div>
-        )}
-      </section>
+            {aiSummary && (
+              <div className="ai-section">
+                <h3>AI Insurance Summary</h3>
+                <p>{aiSummary}</p>
+              </div>
+            )}
 
-      {/* AI SECTIONS */}
-      <section className="card">
-        <h2>AI Outputs</h2>
+            {scopeText && (
+              <div className="ai-section">
+                <h3>Scope of Work (Xactimate-Style Narrative)</h3>
+                <p>{scopeText}</p>
+              </div>
+            )}
 
-        <div className="ai-button-row">
-          <button
-            className="btn btn-primary"
-            onClick={handleGenerateSummary}
-          >
-            Generate AI Insurance Summary
-          </button>
-          <button className="btn" onClick={handleGenerateScope}>
-            Generate Scope of Work
-          </button>
-          <button className="btn" onClick={handleGenerateHazardPlan}>
-            Generate Hazard / Safety Plan
-          </button>
+            {hazardPlan && (
+              <div className="ai-section">
+                <h3>Hazard / Safety Plan</h3>
+                <p>{hazardPlan}</p>
+              </div>
+            )}
+          </section>
         </div>
-
-        {loading && (
-          <p className="loading-text">
-            AI is thinking like a mitigation supervisor…
-          </p>
-        )}
-
-        {aiSummary && (
-          <div className="ai-section">
-            <h3>AI Insurance Summary</h3>
-            <p>{aiSummary}</p>
-          </div>
-        )}
-
-        {scopeText && (
-          <div className="ai-section">
-            <h3>Scope of Work (Xactimate-Style Narrative)</h3>
-            <p>{scopeText}</p>
-          </div>
-        )}
-
-        {hazardPlan && (
-          <div className="ai-section">
-            <h3>Hazard / Safety Plan</h3>
-            <p>{hazardPlan}</p>
-          </div>
-        )}
-      </section>
+      </div>
     </div>
   );
 }
