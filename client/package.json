@@ -10,7 +10,8 @@
     "axios": "^1.6.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1"
+    "react-scripts": "5.0.1",
+    "react-signature-canvas": "^1.0.6"
   },
   "scripts": {
     "postinstall": "node fix-permissions.js",
