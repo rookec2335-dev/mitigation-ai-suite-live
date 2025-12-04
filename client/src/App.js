@@ -18,6 +18,14 @@ function App() {
     setSavedJobs(jobs);
   }, []);
 
+  const defaultSignatures = {
+    techName: "",
+    techSignedAt: "",
+    customerName: "",
+    customerSignedAt: "",
+    customerAcknowledged: false,
+  };
+
   const saveJob = () => {
     if (!jobName) return alert("Enter a job name!");
     const newJob = {
@@ -30,6 +38,7 @@ function App() {
       techHours,
       rooms,
       psychroReadings,
+      signatures,
     };
     const updated = [...savedJobs, newJob];
     localStorage.setItem("mitigationJobs", JSON.stringify(updated));
@@ -38,20 +47,22 @@ function App() {
   };
 
   const loadJob = (job) => {
-    setJobDetails(job.jobDetails);
-    setInsured(job.insured);
-    setInsurance(job.insurance);
-    setInspection(job.inspection);
-    setTechHours(job.techHours);
-    setRooms(job.rooms);
-    setPsychroReadings(job.psychroReadings);
+    setJobDetails(job.jobDetails || defaultJobDetails);
+    setInsured(job.insured || defaultInsured);
+    setInsurance(job.insurance || defaultInsurance);
+    setInspection(job.inspection || defaultInspection);
+    setTechHours(job.techHours || [defaultTechHour()]);
+    setRooms(job.rooms || [defaultRoom()]);
+    setPsychroReadings(job.psychroReadings || [defaultPsychroRow()]);
+    setSignatures(job.signatures || defaultSignatures);
+    setJobName(job.jobName || "");
     alert("Job Loaded!");
   };
 
   /* =============================================
-     MAIN STATE
+     DEFAULT OBJECT HELPERS
   ============================================= */
-  const [jobDetails, setJobDetails] = useState({
+  const defaultJobDetails = {
     companyName: "",
     jobNumber: "",
     priority: "Standard",
@@ -62,9 +73,9 @@ function App() {
     lossType: "",
     iicrcClass: "",
     sourceOfLoss: "",
-  });
+  };
 
-  const [insured, setInsured] = useState({
+  const defaultInsured = {
     name: "",
     phone: "",
     email: "",
@@ -72,9 +83,9 @@ function App() {
     city: "",
     state: "",
     zip: "",
-  });
+  };
 
-  const [insurance, setInsurance] = useState({
+  const defaultInsurance = {
     carrier: "",
     policyNumber: "",
     claimNumber: "",
@@ -83,57 +94,49 @@ function App() {
     adjusterPhone: "",
     adjusterEmail: "",
     billingStatus: "",
-  });
+  };
 
-  /* =============================================
-     INITIAL INSPECTION + CHECKLIST
-  ============================================= */
-  const [inspection, setInspection] = useState({
+  const defaultInspection = {
     inspector: "",
     inspectionDate: "",
     observations: "",
     checklist: [],
+  };
+
+  const defaultTechHour = () => ({
+    date: "",
+    in: "",
+    out: "",
+    notes: "",
   });
 
-  const inspectionChecklistItems = [
-    "Standing Water",
-    "Musty Odor",
-    "Visible Mold",
-    "Structural Damage",
-    "Electrical Risk",
-    "Baseboards Removed",
-    "Flooring Demo",
-    "Safety Concerns",
-  ];
+  const defaultRoom = () => ({
+    name: "",
+    narrative: "",
+    dryLogs: [],
+    photo: null,
+    photoData: "",
+    checklist: [],
+  });
 
-  const toggleInspectionItem = (item) => {
-    setInspection((prev) => ({
-      ...prev,
-      checklist: prev.checklist.includes(item)
-        ? prev.checklist.filter((i) => i !== item)
-        : [...prev.checklist, item],
-    }));
-  };
+  const defaultPsychroRow = () => ({
+    date: "",
+    time: "",
+    temp: "",
+    rh: "",
+    gpp: "",
+  });
 
   /* =============================================
-     TECH HOURS
+     MAIN STATE
   ============================================= */
-  const [techHours, setTechHours] = useState([
-    { date: "", in: "", out: "", notes: "" },
-  ]);
+  const [jobDetails, setJobDetails] = useState(defaultJobDetails);
+  const [insured, setInsured] = useState(defaultInsured);
+  const [insurance, setInsurance] = useState(defaultInsurance);
+  const [inspection, setInspection] = useState(defaultInspection);
 
-  const addTechHour = () =>
-    setTechHours([...techHours, { date: "", in: "", out: "", notes: "" }]);
+  const [techHours, setTechHours] = useState([defaultTechHour()]);
 
-  const updateTechHour = (idx, field, value) => {
-    const updated = [...techHours];
-    updated[idx][field] = value;
-    setTechHours(updated);
-  };
-
-  /* =============================================
-     ROOMS & CHECKLIST
-  ============================================= */
   const roomChecklistItems = [
     "Baseboards Removed",
     "Carpet Pulled",
@@ -146,30 +149,32 @@ function App() {
     "HEPA Filtration",
   ];
 
-  const [rooms, setRooms] = useState([
-    {
-      name: "",
-      narrative: "",
-      dryLogs: [],
-      photo: null,
-      photoData: "",
-      checklist: [],
-    },
+  const [rooms, setRooms] = useState([defaultRoom()]);
+
+  const [psychroReadings, setPsychroReadings] = useState([
+    defaultPsychroRow(),
   ]);
 
-  const addRoom = () => {
-    setRooms((prev) => [
-      ...prev,
-      {
-        name: "",
-        narrative: "",
-        dryLogs: [],
-        photo: null,
-        photoData: "",
-        checklist: [],
-      },
-    ]);
-  };
+  const inspectionChecklistItems = [
+    "Standing Water",
+    "Musty Odor",
+    "Visible Mold",
+    "Structural Damage",
+    "Electrical Risk",
+    "Baseboards Removed",
+    "Flooring Demo",
+    "Safety Concerns",
+  ];
+
+  /* =============================================
+     SIGNATURES STATE
+  ============================================= */
+  const [signatures, setSignatures] = useState(defaultSignatures);
+
+  /* =============================================
+     ROOM HELPERS
+  ============================================= */
+  const addRoom = () => setRooms((prev) => [...prev, defaultRoom()]);
 
   const updateRoom = (idx, field, value) => {
     setRooms((prev) => {
@@ -225,17 +230,24 @@ function App() {
   };
 
   /* =============================================
-     PSYCHROMETRIC READINGS
+     TECH HOURS HELPERS
   ============================================= */
-  const [psychroReadings, setPsychroReadings] = useState([
-    { date: "", time: "", temp: "", rh: "", gpp: "" },
-  ]);
+  const addTechHour = () =>
+    setTechHours((prev) => [...prev, defaultTechHour()]);
 
+  const updateTechHour = (idx, field, value) => {
+    setTechHours((prev) => {
+      const updated = [...prev];
+      updated[idx][field] = value;
+      return updated;
+    });
+  };
+
+  /* =============================================
+     PSYCHRO HELPERS
+  ============================================= */
   const addReading = () =>
-    setPsychroReadings((prev) => [
-      ...prev,
-      { date: "", time: "", temp: "", rh: "", gpp: "" },
-    ]);
+    setPsychroReadings((prev) => [...prev, defaultPsychroRow()]);
 
   const updateReading = (idx, field, value) => {
     setPsychroReadings((prev) => {
@@ -243,6 +255,25 @@ function App() {
       updated[idx][field] = value;
       return updated;
     });
+  };
+
+  /* =============================================
+     INSPECTION CHECKLIST
+  ============================================= */
+  const toggleInspectionItem = (item) => {
+    setInspection((prev) => ({
+      ...prev,
+      checklist: prev.checklist.includes(item)
+        ? prev.checklist.filter((i) => i !== item)
+        : [...prev.checklist, item],
+    }));
+  };
+
+  /* =============================================
+     SIGNATURE HELPERS
+  ============================================= */
+  const updateSignatureField = (field, value) => {
+    setSignatures((prev) => ({ ...prev, [field]: value }));
   };
 
   /* =============================================
@@ -256,7 +287,7 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   /* =============================================
-     AI CALLS
+     COMMON PAYLOAD
   ============================================= */
   const buildJobPayload = () => ({
     jobDetails,
@@ -266,8 +297,12 @@ function App() {
     techHours,
     rooms,
     psychroReadings,
+    signatures,
   });
 
+  /* =============================================
+     AI CALLS
+  ============================================= */
   const handleGenerateSummary = async () => {
     try {
       setLoading(true);
@@ -289,7 +324,9 @@ function App() {
       setLoading(true);
       const res = await axios.post(
         `${API_BASE}/api/analyze-psychrometrics`,
-        { readings: psychroReadings }
+        {
+          readings: psychroReadings,
+        }
       );
       setPsychroAnalysis(res.data.analysis || "No AI psychro response.");
     } catch (err) {
@@ -340,12 +377,12 @@ function App() {
       const payload = buildJobPayload();
       const res = await axios.post(
         `${API_BASE}/api/generate-xactimate`,
-        { job: payload }
+        { job: payload, mode: "per-room" }
       );
       setXactimateText(res.data.xactimate || "No Xactimate-style output.");
     } catch (err) {
       console.error(err);
-      setXactimateText("Error generating Xactimate export.");
+      setXactimateText("Error generating Xactimate narrative.");
     } finally {
       setLoading(false);
     }
@@ -395,7 +432,6 @@ function App() {
           psychroAnalysis,
           scope: scopeText,
           hazardPlan,
-          xactimate: xactimateText,
         },
         { responseType: "blob" }
       );
@@ -428,8 +464,8 @@ function App() {
         <div className="header-main">
           <h1>Mitigation Supervisor Console</h1>
           <p className="subtext">
-            Rooter Plus – Insurer-ready mitigation documentation, AI narratives,
-            photo analysis, Xactimate export, and PDF reporting.
+            Rooter Plus – Insurer-ready mitigation documentation, AI
+            narratives, and PDF export.
           </p>
         </div>
 
@@ -441,7 +477,9 @@ function App() {
             onChange={(e) => setJobName(e.target.value)}
           />
           <div className="header-buttons">
-            <button className="btn" onClick={saveJob}>Save Job</button>
+            <button className="btn" onClick={saveJob}>
+              Save Job
+            </button>
             <button className="btn btn-primary" onClick={handleExportPdf}>
               Export Insurance PDF
             </button>
@@ -449,7 +487,7 @@ function App() {
         </div>
       </header>
 
-      {/* SAVED JOBS */}
+      {/* SAVED JOBS HISTORY (FULL WIDTH) */}
       {savedJobs.length > 0 && (
         <section className="card">
           <h2>Saved Jobs</h2>
@@ -457,25 +495,23 @@ function App() {
             {savedJobs.map((j, i) => (
               <button
                 key={i}
-                className="saved-job-btn"
+                className="saved-job-main"
                 onClick={() => loadJob(j)}
               >
-                {j.jobName} –{" "}
-                {new Date(j.timestamp).toLocaleString("en-US")}
+                <span className="saved-job-title">{j.jobName}</span>{" "}
+                <span className="saved-job-meta">
+                  – {new Date(j.timestamp).toLocaleString("en-US")}
+                </span>
               </button>
             ))}
           </div>
         </section>
       )}
 
-      {/* ===============================
-          TWO-COLUMN LAYOUT BEGINS HERE
-         =============================== */}
+      {/* TWO COLUMN LAYOUT */}
       <div className="two-column-layout">
-
         {/* LEFT COLUMN */}
         <div className="column">
-
           {/* INSURED / PROPERTY */}
           <section className="card">
             <h2>Insured / Property</h2>
@@ -483,64 +519,88 @@ function App() {
               <input
                 placeholder="Insured Name"
                 value={insured.name}
-                onChange={(e) => setInsured({ ...insured, name: e.target.value })}
+                onChange={(e) =>
+                  setInsured({ ...insured, name: e.target.value })
+                }
               />
               <input
                 placeholder="Phone"
                 value={insured.phone}
-                onChange={(e) => setInsured({ ...insured, phone: e.target.value })}
+                onChange={(e) =>
+                  setInsured({ ...insured, phone: e.target.value })
+                }
               />
               <input
                 placeholder="Email"
                 value={insured.email}
-                onChange={(e) => setInsured({ ...insured, email: e.target.value })}
+                onChange={(e) =>
+                  setInsured({ ...insured, email: e.target.value })
+                }
               />
             </div>
             <div className="grid-3">
               <input
                 placeholder="Address"
                 value={insured.address}
-                onChange={(e) => setInsured({ ...insured, address: e.target.value })}
+                onChange={(e) =>
+                  setInsured({ ...insured, address: e.target.value })
+                }
               />
               <input
                 placeholder="City"
                 value={insured.city}
-                onChange={(e) => setInsured({ ...insured, city: e.target.value })}
+                onChange={(e) =>
+                  setInsured({ ...insured, city: e.target.value })
+                }
               />
               <input
                 placeholder="State"
                 value={insured.state}
-                onChange={(e) => setInsured({ ...insured, state: e.target.value })}
+                onChange={(e) =>
+                  setInsured({ ...insured, state: e.target.value })
+                }
               />
             </div>
             <div className="grid-3">
               <input
                 placeholder="ZIP"
                 value={insured.zip}
-                onChange={(e) => setInsured({ ...insured, zip: e.target.value })}
+                onChange={(e) =>
+                  setInsured({ ...insured, zip: e.target.value })
+                }
               />
             </div>
           </section>
 
-          {/* INSURANCE */}
+          {/* INSURANCE & BILLING */}
           <section className="card">
             <h2>Insurance & Billing</h2>
             <div className="grid-3">
               <input
                 placeholder="Carrier"
                 value={insurance.carrier}
-                onChange={(e) => setInsurance({ ...insurance, carrier: e.target.value })}
+                onChange={(e) =>
+                  setInsurance({ ...insurance, carrier: e.target.value })
+                }
               />
               <input
                 placeholder="Policy #"
                 value={insurance.policyNumber}
-                onChange={(e) => setInsurance({ ...insurance, policyNumber: e.target.value })}
+                onChange={(e) =>
+                  setInsurance({
+                    ...insurance,
+                    policyNumber: e.target.value,
+                  })
+                }
               />
               <input
                 placeholder="Claim #"
                 value={insurance.claimNumber}
                 onChange={(e) =>
-                  setInsurance({ ...insurance, claimNumber: e.target.value })
+                  setInsurance({
+                    ...insurance,
+                    claimNumber: e.target.value,
+                  })
                 }
               />
             </div>
@@ -549,21 +609,30 @@ function App() {
                 placeholder="Deductible"
                 value={insurance.deductible}
                 onChange={(e) =>
-                  setInsurance({ ...insurance, deductible: e.target.value })
+                  setInsurance({
+                    ...insurance,
+                    deductible: e.target.value,
+                  })
                 }
               />
               <input
                 placeholder="Adjuster Name"
                 value={insurance.adjusterName}
                 onChange={(e) =>
-                  setInsurance({ ...insurance, adjusterName: e.target.value })
+                  setInsurance({
+                    ...insurance,
+                    adjusterName: e.target.value,
+                  })
                 }
               />
               <input
                 placeholder="Adjuster Phone"
                 value={insurance.adjusterPhone}
                 onChange={(e) =>
-                  setInsurance({ ...insurance, adjusterPhone: e.target.value })
+                  setInsurance({
+                    ...insurance,
+                    adjusterPhone: e.target.value,
+                  })
                 }
               />
             </div>
@@ -572,14 +641,20 @@ function App() {
                 placeholder="Adjuster Email"
                 value={insurance.adjusterEmail}
                 onChange={(e) =>
-                  setInsurance({ ...insurance, adjusterEmail: e.target.value })
+                  setInsurance({
+                    ...insurance,
+                    adjusterEmail: e.target.value,
+                  })
                 }
               />
               <input
                 placeholder="Billing Status"
                 value={insurance.billingStatus}
                 onChange={(e) =>
-                  setInsurance({ ...insurance, billingStatus: e.target.value })
+                  setInsurance({
+                    ...insurance,
+                    billingStatus: e.target.value,
+                  })
                 }
               />
             </div>
@@ -600,7 +675,10 @@ function App() {
                 type="date"
                 value={inspection.inspectionDate}
                 onChange={(e) =>
-                  setInspection({ ...inspection, inspectionDate: e.target.value })
+                  setInspection({
+                    ...inspection,
+                    inspectionDate: e.target.value,
+                  })
                 }
               />
               <select
@@ -618,15 +696,16 @@ function App() {
                 <option value="Sewage Backup">Sewage Backup</option>
               </select>
             </div>
-
             <textarea
               placeholder="Observations / Scope of Work"
               value={inspection.observations}
               onChange={(e) =>
-                setInspection({ ...inspection, observations: e.target.value })
+                setInspection({
+                  ...inspection,
+                  observations: e.target.value,
+                })
               }
             />
-
             <div className="checklist-grid">
               {inspectionChecklistItems.map((item) => (
                 <label key={item}>
@@ -641,7 +720,7 @@ function App() {
             </div>
           </section>
 
-          {/* JOB & LOSS */}
+          {/* JOB & LOSS DETAILS */}
           <section className="card">
             <h2>Job & Loss Details</h2>
             <div className="grid-3">
@@ -649,20 +728,29 @@ function App() {
                 placeholder="Company Name"
                 value={jobDetails.companyName}
                 onChange={(e) =>
-                  setJobDetails({ ...jobDetails, companyName: e.target.value })
+                  setJobDetails({
+                    ...jobDetails,
+                    companyName: e.target.value,
+                  })
                 }
               />
               <input
                 placeholder="Job #"
                 value={jobDetails.jobNumber}
                 onChange={(e) =>
-                  setJobDetails({ ...jobDetails, jobNumber: e.target.value })
+                  setJobDetails({
+                    ...jobDetails,
+                    jobNumber: e.target.value,
+                  })
                 }
               />
               <select
                 value={jobDetails.priority}
                 onChange={(e) =>
-                  setJobDetails({ ...jobDetails, priority: e.target.value })
+                  setJobDetails({
+                    ...jobDetails,
+                    priority: e.target.value,
+                  })
                 }
               >
                 <option value="Standard">Priority: Standard</option>
@@ -671,44 +759,60 @@ function App() {
                 <option value="High">Priority: High</option>
               </select>
             </div>
-
             <div className="grid-3">
               <input
                 placeholder="Technician"
                 value={jobDetails.technician}
                 onChange={(e) =>
-                  setJobDetails({ ...jobDetails, technician: e.target.value })
+                  setJobDetails({
+                    ...jobDetails,
+                    technician: e.target.value,
+                  })
                 }
               />
               <input
                 placeholder="Supervisor"
                 value={jobDetails.supervisor}
                 onChange={(e) =>
-                  setJobDetails({ ...jobDetails, supervisor: e.target.value })
+                  setJobDetails({
+                    ...jobDetails,
+                    supervisor: e.target.value,
+                  })
                 }
               />
               <select
                 value={jobDetails.iicrcClass}
                 onChange={(e) =>
-                  setJobDetails({ ...jobDetails, iicrcClass: e.target.value })
+                  setJobDetails({
+                    ...jobDetails,
+                    iicrcClass: e.target.value,
+                  })
                 }
               >
                 <option value="">IICRC Class</option>
-                <option value="Class 1">Class 1 – Small amount of wet materials</option>
-                <option value="Class 2">Class 2 – Significant area affected</option>
-                <option value="Class 3">Class 3 – Walls / Insulation soaked</option>
+                <option value="Class 1">
+                  Class 1 – Small amount of wet materials
+                </option>
+                <option value="Class 2">
+                  Class 2 – Significant area affected
+                </option>
+                <option value="Class 3">
+                  Class 3 – Walls / Insulation soaked
+                </option>
                 <option value="Class 4">
                   Class 4 – Specialty drying (wood, plaster)
                 </option>
               </select>
             </div>
-
             <div className="grid-3">
               <input
                 type="date"
                 value={jobDetails.dateOfLoss}
                 onChange={(e) =>
-                  setJobDetails({ ...jobDetails, dateOfLoss: e.target.value })
+                  setJobDetails({
+                    ...jobDetails,
+                    dateOfLoss: e.target.value,
+                  })
                 }
               />
               <input
@@ -733,14 +837,10 @@ function App() {
               />
             </div>
           </section>
-
         </div>
 
-        {/* ======================
-             RIGHT COLUMN
-           ====================== */}
+        {/* RIGHT COLUMN */}
         <div className="column">
-
           {/* TECH HOURS */}
           <section className="card">
             <h2>Tech Hours</h2>
@@ -749,22 +849,30 @@ function App() {
                 <input
                   type="date"
                   value={entry.date}
-                  onChange={(e) => updateTechHour(idx, "date", e.target.value)}
+                  onChange={(e) =>
+                    updateTechHour(idx, "date", e.target.value)
+                  }
                 />
                 <input
                   type="time"
                   value={entry.in}
-                  onChange={(e) => updateTechHour(idx, "in", e.target.value)}
+                  onChange={(e) =>
+                    updateTechHour(idx, "in", e.target.value)
+                  }
                 />
                 <input
                   type="time"
                   value={entry.out}
-                  onChange={(e) => updateTechHour(idx, "out", e.target.value)}
+                  onChange={(e) =>
+                    updateTechHour(idx, "out", e.target.value)
+                  }
                 />
                 <input
                   placeholder="Notes"
                   value={entry.notes}
-                  onChange={(e) => updateTechHour(idx, "notes", e.target.value)}
+                  onChange={(e) =>
+                    updateTechHour(idx, "notes", e.target.value)
+                  }
                 />
               </div>
             ))}
@@ -792,7 +900,6 @@ function App() {
                     updateRoom(idx, "narrative", e.target.value)
                   }
                 />
-
                 <h4>Checklist</h4>
                 <div className="checklist-grid">
                   {roomChecklistItems.map((item) => (
@@ -807,7 +914,10 @@ function App() {
                   ))}
                 </div>
 
-                <button className="btn" onClick={() => addDryLog(idx)}>
+                <button
+                  className="btn"
+                  onClick={() => addDryLog(idx)}
+                >
                   + Add Dry Log
                 </button>
                 {room.dryLogs?.map((log, i) => (
@@ -864,7 +974,7 @@ function App() {
             </button>
           </section>
 
-          {/* PSYCHROMETRIC */}
+          {/* PSYCHROMETRIC READINGS */}
           <section className="card">
             <h2>Psychrometric Readings</h2>
             {psychroReadings.map((row, idx) => (
@@ -923,7 +1033,75 @@ function App() {
             )}
           </section>
 
-          {/* AI OUTPUTS */}
+          {/* SIGNATURES & AUTHORIZATION */}
+          <section className="card">
+            <h2>Signatures & Authorization</h2>
+            <div className="grid-3">
+              <div>
+                <h4>Technician</h4>
+                <input
+                  placeholder="Technician Name (printed)"
+                  value={signatures.techName}
+                  onChange={(e) =>
+                    updateSignatureField("techName", e.target.value)
+                  }
+                />
+                <input
+                  type="datetime-local"
+                  value={signatures.techSignedAt}
+                  onChange={(e) =>
+                    updateSignatureField("techSignedAt", e.target.value)
+                  }
+                />
+              </div>
+              <div>
+                <h4>Customer</h4>
+                <input
+                  placeholder="Customer Name (printed)"
+                  value={signatures.customerName}
+                  onChange={(e) =>
+                    updateSignatureField(
+                      "customerName",
+                      e.target.value
+                    )
+                  }
+                />
+                <input
+                  type="datetime-local"
+                  value={signatures.customerSignedAt}
+                  onChange={(e) =>
+                    updateSignatureField(
+                      "customerSignedAt",
+                      e.target.value
+                    )
+                  }
+                />
+              </div>
+              <div>
+                <h4>Authorization</h4>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={signatures.customerAcknowledged}
+                    onChange={(e) =>
+                      updateSignatureField(
+                        "customerAcknowledged",
+                        e.target.checked
+                      )
+                    }
+                  />{" "}
+                  Customer acknowledges mitigation work performed and
+                  drying conditions as documented.
+                </label>
+                <p className="muted">
+                  These fields are stored with the job history and appear
+                  on the insurer PDF.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* AI SECTIONS */}
           <section className="card">
             <h2>AI Outputs</h2>
 
@@ -937,11 +1115,17 @@ function App() {
               <button className="btn" onClick={handleGenerateScope}>
                 Generate Scope of Work
               </button>
-              <button className="btn" onClick={handleGenerateHazardPlan}>
+              <button
+                className="btn"
+                onClick={handleGenerateHazardPlan}
+              >
                 Generate Hazard / Safety Plan
               </button>
-              <button className="btn" onClick={handleGenerateXactimate}>
-                Generate Xactimate Export
+              <button
+                className="btn"
+                onClick={handleGenerateXactimate}
+              >
+                Generate Xactimate Narrative
               </button>
             </div>
 
@@ -960,7 +1144,7 @@ function App() {
 
             {scopeText && (
               <div className="ai-section">
-                <h3>Scope of Work</h3>
+                <h3>Scope of Work (Xactimate-Style Narrative)</h3>
                 <p>{scopeText}</p>
               </div>
             )}
@@ -974,12 +1158,11 @@ function App() {
 
             {xactimateText && (
               <div className="ai-section">
-                <h3>Xactimate Export</h3>
+                <h3>Xactimate Copy/Paste Block</h3>
                 <p>{xactimateText}</p>
               </div>
             )}
           </section>
-
         </div>
       </div>
     </div>
