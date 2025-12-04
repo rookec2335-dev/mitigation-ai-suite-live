@@ -9,13 +9,12 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const OpenAI = require("openai");
 const PDFDocument = require("pdfkit");
-const stream = require("stream");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
-app.use(bodyParser.json({ limit: "5mb" }));
+app.use(bodyParser.json({ limit: "10mb" }));
 
 // ------------------------------
 // Health check
@@ -42,6 +41,7 @@ function buildJobContext(job) {
     techHours = [],
     rooms = [],
     psychroReadings = [],
+    signatures = {},
   } = job || {};
 
   return `
@@ -61,61 +61,84 @@ INSURED / PROPERTY
 - Name: ${insured.name || "N/A"}
 - Phone: ${insured.phone || "N/A"}
 - Email: ${insured.email || "N/A"}
-- Address: ${insured.address || ""} ${insured.city || ""} ${insured.state || ""} ${insured.zip || ""}
+- Address: ${insured.address || ""} ${insured.city || ""} ${
+    insured.state || ""
+  } ${insured.zip || ""}
 
 INSURANCE INFO
 - Carrier: ${insurance.carrier || "N/A"}
 - Policy #: ${insurance.policyNumber || "N/A"}
 - Claim #: ${insurance.claimNumber || "N/A"}
 - Deductible: ${insurance.deductible || "N/A"}
-- Adjuster: ${insurance.adjusterName || "N/A"} | ${insurance.adjusterPhone || "N/A"} | ${insurance.adjusterEmail || "N/A"}
+- Adjuster: ${insurance.adjusterName || "N/A"} | ${
+    insurance.adjusterPhone || "N/A"
+  } | ${insurance.adjusterEmail || "N/A"}
 - Billing Status: ${insurance.billingStatus || "N/A"}
 
 INITIAL INSPECTION
 - Inspector: ${inspection.inspector || "N/A"}
 - Inspection Date: ${inspection.inspectionDate || "N/A"}
 - Observations / Narrative: ${inspection.observations || "N/A"}
-- Checklist Flags: ${(inspection.checklist || []).join(", ") || "None noted"}
+- Checklist Flags: ${
+    (inspection.checklist || []).join(", ") || "None noted"
+  }
 
 TECH HOURS
-${techHours
-  .map(
-    (h) =>
-      `- ${h.date || "N/A"} | In: ${h.in || "N/A"} | Out: ${
-        h.out || "N/A"
-      } | Notes: ${h.notes || ""}`
-  )
-  .join("\n") || "No hours entered."}
+${
+  techHours
+    .map(
+      (h) =>
+        `- ${h.date || "N/A"} | In: ${h.in || "N/A"} | Out: ${
+          h.out || "N/A"
+        } | Notes: ${h.notes || ""}`
+    )
+    .join("\n") || "No hours entered."
+}
 
 ROOMS & DRY LOGS
-${(rooms || [])
-  .map((r, idx) => {
-    const dry = (r.dryLogs || [])
-      .map(
-        (d) =>
-          `    • ${d.date || "N/A"} ${d.time || ""} – ${d.reading || ""}`
-      )
-      .join("\n");
-    const checklist = (r.checklist || []).join(", ") || "None";
-    return `
+${
+  rooms
+    .map((r, idx) => {
+      const dry = (r.dryLogs || [])
+        .map(
+          (d) =>
+            `    • ${d.date || "N/A"} ${d.time || ""} – ${
+              d.reading || ""
+            }`
+        )
+        .join("\n");
+      const checklist = (r.checklist || []).join(", ") || "None";
+      return `
   Room ${idx + 1}: ${r.name || "Unnamed Room"}
   - Narrative: ${r.narrative || "N/A"}
   - Checklist: ${checklist}
   - Dry Logs:
 ${dry || "    • No dry logs recorded."}
 `;
-  })
-  .join("\n") || "No rooms recorded."}
+    })
+    .join("\n") || "No rooms recorded."
+}
 
 PSYCHROMETRIC READINGS
-${(psychroReadings || [])
-  .map(
-    (p) =>
-      `- ${p.date || "N/A"} ${p.time || ""} | Temp: ${
-        p.temp || "N/A"
-      } | RH: ${p.rh || "N/A"} | GPP: ${p.gpp || "N/A"}`
-  )
-  .join("\n") || "No psychrometric readings recorded."}
+${
+  psychroReadings
+    .map(
+      (p) =>
+        `- ${p.date || "N/A"} ${p.time || ""} | Temp: ${
+          p.temp || "N/A"
+        } | RH: ${p.rh || "N/A"} | GPP: ${p.gpp || "N/A"}`
+    )
+    .join("\n") || "No psychrometric readings recorded."
+}
+
+SIGNATURES & AUTHORIZATION
+- Technician Name: ${signatures.techName || "N/A"}
+- Technician Signed At: ${signatures.techSignedAt || "N/A"}
+- Customer Name: ${signatures.customerName || "N/A"}
+- Customer Signed At: ${signatures.customerSignedAt || "N/A"}
+- Customer Acknowledged: ${
+    signatures.customerAcknowledged ? "Yes" : "No"
+  }
 `;
 }
 
@@ -295,14 +318,15 @@ app.post("/api/generate-hazard-plan", async (req, res) => {
     const jobContext = buildJobContext(job);
 
     const prompt = `
-You are a mitigation supervisor creating a concise HAZARD / SAFETY PLAN
-for field technicians and for the claim file.
+You are a mitigation safety supervisor.
 
-Based on the job data below:
-- Identify key safety concerns (electrical, structural, microbial, slip/fall, etc.).
-- Provide clear PPE recommendations.
-- Note any engineering controls (containment, negative air, lock-out/tag-out).
-- Keep it under 2–3 short paragraphs plus up to 5 bullet points.
+Based on the job information below, write a concise HAZARD / SAFETY PLAN with:
+- PPE requirements
+- Electrical / structural / microbial concerns
+- Containment and negative air considerations
+- Documentation / signage recommendations
+
+Keep it 3–6 short bullet points per section, neutral and professional.
 
 JOB DATA:
 ${jobContext}
@@ -320,12 +344,12 @@ ${jobContext}
     res.json({ hazardPlan });
   } catch (error) {
     console.error("AI HAZARD ERROR:", error);
-    res.status(500).json({ error: "AI hazard plan generation failed." });
+    res.status(500).json({ error: "AI hazard plan failed." });
   }
 });
 
 // ------------------------------
-// AI: Room Photo Description (text-based using metadata)
+// AI: Analyze Room Photo
 // ------------------------------
 app.post("/api/analyze-room-photo", async (req, res) => {
   try {
@@ -333,21 +357,17 @@ app.post("/api/analyze-room-photo", async (req, res) => {
     const openai = createOpenAI();
 
     const prompt = `
-You are documenting mitigation work for insurance.
+You are viewing a mitigation job site photo (encoded as base64; you won't actually see the image, but infer from description)
+and room metadata. The tech wants a short narrative summary of what appears to have been done,
+suitable for an insurance-facing note.
 
-You are given:
-- Room name: ${roomName || "N/A"}
-- Checklist items: ${(checklist || []).join(", ") || "None checked"}
-- Note: A photo was captured of this room (assume it matches the checklist).
+Room: ${roomName || "Unnamed Room"}
+Checklist Flags: ${checklist.join(", ") || "None"}
 
-TASK:
-Write 3–6 sentences describing:
-- What was likely done in this room (demo, drying, cleaning).
-- Any notable conditions (e.g., baseboards removed, flooring demo, containment).
-- Make it sound like a professional field note for the claim file.
-
-Do NOT mention that you can't see the photo. Assume the checklist is accurate.
-Keep the tone factual and neutral.
+Write 3–6 sentences:
+- Describe likely demo (baseboards, drywall cuts, flooring removal, etc.).
+- Mention equipment present if implied by flags (air movers, dehus, HEPA).
+- Keep neutral, factual, and insurer-friendly.
     `.trim();
 
     const response = await openai.chat.completions.create({
@@ -361,136 +381,56 @@ Keep the tone factual and neutral.
 
     res.json({ description });
   } catch (error) {
-    console.error("AI ROOM PHOTO ERROR:", error);
-    res.status(500).json({ error: "Room photo analysis failed." });
+    console.error("AI PHOTO ERROR:", error);
+    res.status(500).json({ error: "AI photo analysis failed." });
   }
 });
 
 // ------------------------------
-// XACTIMATE MAPPING (checklist -> codes)
+// AI: Xactimate-style Narrative
 // ------------------------------
-const XACTIMATE_MAP = {
-  "Baseboards Removed": {
-    code: "WTR BSE",
-    desc: "Remove baseboards",
-    unit: "LF",
-  },
-  "Carpet Pulled": {
-    code: "WTR PULL",
-    desc: "Pull back carpet",
-    unit: "SF",
-  },
-  "Flooring Removed": {
-    code: "FLR RMV",
-    desc: "Remove damaged flooring",
-    unit: "SF",
-  },
-  "2ft Wall Cut": {
-    code: "WTR DRYWL2",
-    desc: "2' drywall flood cut",
-    unit: "LF",
-  },
-  "4ft Wall Cut": {
-    code: "WTR DRYWL4",
-    desc: "4' drywall flood cut",
-    unit: "LF",
-  },
-  "Containment Setup": {
-    code: "WTR CNTM",
-    desc: "Install containment",
-    unit: "SF",
-  },
-  "Dehumidifier Used": {
-    code: "WTR DHMD",
-    desc: "Dehumidifier (per day)",
-    unit: "DAY",
-  },
-  "Air Movers Installed": {
-    code: "WTR AMTD",
-    desc: "Air mover (per day)",
-    unit: "DAY",
-  },
-  "HEPA Filtration": {
-    code: "CLN HEPA",
-    desc: "HEPA negative air machine (per day)",
-    unit: "DAY",
-  },
-};
-
-// ------------------------------
-// XACTIMATE CSV EXPORT (PER ROOM)
-// ------------------------------
-app.post("/api/export-xactimate", async (req, res) => {
+app.post("/api/generate-xactimate", async (req, res) => {
   try {
     const job = req.body.job || {};
-    const jobDetails = job.jobDetails || {};
-    const rooms = job.rooms || [];
+    const mode = req.body.mode || "per-room";
+    const openai = createOpenAI();
+    const jobContext = buildJobContext(job);
 
-    const lines = [];
-    // Header
-    lines.push([
-      "Room",
-      "Code",
-      "Description",
-      "Unit",
-      "Quantity",
-      "Notes",
-    ]);
+    const prompt = `
+You are building an XACTIMATE-STYLE NARRATIVE ONLY.
 
-    rooms.forEach((room) => {
-      const roomName = room.name || "Unnamed Room";
-      const checklist = room.checklist || [];
-      const narrative = (room.narrative || "").replace(/\s+/g, " ").trim();
+GOAL:
+Return a copy/paste-ready narrative the estimator can drop into Xactimate notes.
 
-      checklist.forEach((item) => {
-        const mapped = XACTIMATE_MAP[item];
-        if (!mapped) return;
+RULES:
+- Use short, direct sentences.
+- Group by rooms/areas.
+- Focus on demolition, cleaning, drying, containment, and equipment.
+- Do NOT include quantities, line item codes, or pricing.
+- Do NOT include policy language.
 
-        const notesParts = [];
-        if (narrative) {
-          notesParts.push(`Narrative: ${narrative}`);
-        }
-        notesParts.push("Set quantity per sketch / scope.");
+FORMAT:
+- Start with "MITIGATION SCOPE OF WORK - NARRATIVE"
+- Then bullet by room/area: "HALL BATH:", "LIVING ROOM:", etc.
+- Under each, 3–7 short bullets of what was done.
 
-        const notes = notesParts.join(" ");
+JOB DATA:
+${jobContext}
+    `.trim();
 
-        lines.push([
-          roomName,
-          mapped.code,
-          mapped.desc,
-          mapped.unit,
-          "",
-          notes,
-        ]);
-      });
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
     });
 
-    // Convert to CSV
-    const csv = lines
-      .map((row) =>
-        row
-          .map((val) => {
-            const s = String(val ?? "");
-            if (s.includes(",") || s.includes('"') || s.includes("\n")) {
-              return `"${s.replace(/"/g, '""')}"`;
-            }
-            return s;
-          })
-          .join(",")
-      )
-      .join("\n");
+    const xactimate =
+      response.choices?.[0]?.message?.content ||
+      "No Xactimate-style narrative generated.";
 
-    res.setHeader("Content-Type", "text/csv");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="xactimate-export-${
-        jobDetails.jobNumber || "job"
-      }.csv"`
-    );
-    res.send(csv);
+    res.json({ xactimate });
   } catch (error) {
-    console.error("XACTIMATE EXPORT ERROR:", error);
-    res.status(500).json({ error: "Xactimate export failed." });
+    console.error("AI XACTIMATE ERROR:", error);
+    res.status(500).json({ error: "AI Xactimate narrative failed." });
   }
 });
 
@@ -499,7 +439,8 @@ app.post("/api/export-xactimate", async (req, res) => {
 // ------------------------------
 app.post("/api/generate-pdf", async (req, res) => {
   try {
-    const { job, summary } = req.body || {};
+    const { job, summary, psychroAnalysis, scope, hazardPlan } =
+      req.body || {};
     const {
       jobDetails = {},
       insured = {},
@@ -508,9 +449,9 @@ app.post("/api/generate-pdf", async (req, res) => {
       techHours = [],
       rooms = [],
       psychroReadings = [],
+      signatures = {},
     } = job || {};
 
-    // Create PDF doc in memory
     const doc = new PDFDocument({ margin: 40 });
     const chunks = [];
 
@@ -527,7 +468,7 @@ app.post("/api/generate-pdf", async (req, res) => {
       res.send(pdfBuffer);
     });
 
-    // ---- PDF CONTENT ----
+    // ---- COVER / HEADER ----
     doc.fontSize(18).text("Mitigation Report", { align: "center" });
     doc.moveDown(0.5);
     doc
@@ -631,11 +572,13 @@ app.post("/api/generate-pdf", async (req, res) => {
       });
     }
 
-    // Psychrometric overview (text rows)
+    // Psychrometric overview
     if (psychroReadings && psychroReadings.length > 0) {
       doc
         .fontSize(14)
-        .text("Psychrometric Overview (Key Readings)", { underline: true });
+        .text("Psychrometric Overview (Key Readings)", {
+          underline: true,
+        });
       doc.moveDown(0.5);
       doc.fontSize(11);
       psychroReadings.forEach((p) => {
@@ -648,17 +591,69 @@ app.post("/api/generate-pdf", async (req, res) => {
       doc.moveDown();
     }
 
-    // AI narrative (full summary)
-    if (summary) {
+    // Signatures & Authorization
+    doc.fontSize(14).text("Signatures & Authorization", { underline: true });
+    doc.moveDown(0.5);
+    doc.fontSize(11);
+    doc.text(
+      `Technician: ${signatures.techName || "N/A"} | Signed: ${
+        signatures.techSignedAt || "N/A"
+      }`
+    );
+    doc.text(
+      `Customer: ${signatures.customerName || "N/A"} | Signed: ${
+        signatures.customerSignedAt || "N/A"
+      }`
+    );
+    doc.text(
+      `Customer Acknowledged Work: ${
+        signatures.customerAcknowledged ? "Yes" : "No"
+      }`
+    );
+    doc.moveDown();
+
+    // AI narrative (full summary) + optional sections on new page
+    if (summary || psychroAnalysis || scope || hazardPlan) {
       doc.addPage();
-      doc.fontSize(16).text("AI Mitigation Narrative", {
+      doc.fontSize(16).text("AI Mitigation Narrative Bundle", {
         underline: true,
         align: "center",
       });
       doc.moveDown();
-      doc.fontSize(11).text(summary, {
+
+      doc.fontSize(13).text("AI Insurance Summary", { underline: true });
+      doc.moveDown(0.3);
+      doc.fontSize(11).text(summary || "No summary generated.", {
         align: "left",
       });
+      doc.moveDown();
+
+      if (scope) {
+        doc.fontSize(13).text("Scope of Work (Narrative)", {
+          underline: true,
+        });
+        doc.moveDown(0.3);
+        doc.fontSize(11).text(scope, { align: "left" });
+        doc.moveDown();
+      }
+
+      if (psychroAnalysis) {
+        doc.fontSize(13).text("Psychrometric Analysis (AI)", {
+          underline: true,
+        });
+        doc.moveDown(0.3);
+        doc.fontSize(11).text(psychroAnalysis, { align: "left" });
+        doc.moveDown();
+      }
+
+      if (hazardPlan) {
+        doc.fontSize(13).text("Hazard / Safety Plan", {
+          underline: true,
+        });
+        doc.moveDown(0.3);
+        doc.fontSize(11).text(hazardPlan, { align: "left" });
+        doc.moveDown();
+      }
     }
 
     doc.end();
